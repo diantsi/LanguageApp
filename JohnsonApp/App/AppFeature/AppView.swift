@@ -2,8 +2,6 @@
 //  AppView.swift
 //  JohnsonApp
 //
-//  Created by Діана Цісарук on 10.07.2026.
-//
 
 import ComposableArchitecture
 import SwiftUI
