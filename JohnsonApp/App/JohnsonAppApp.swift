@@ -4,6 +4,7 @@
 //
 
 import SwiftUI
+import SwiftData
 import ComposableArchitecture
 
 @main
@@ -16,5 +17,6 @@ struct JohnsonAppApp: App {
         WindowGroup {
             AppView(store: store)
         }
+        .modelContainer(SwiftDataModelContainer.shared)
     }
 }
