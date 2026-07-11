@@ -112,14 +112,25 @@ extension PersistenceClient: DependencyKey {
     )
     
     
-    static let previewValue = Self(
-        fetchTerms: { _ in [] },
-        fetchTerm: { _ in nil },
-        addTerm: { _ in },
-        updateTerm: { _ in },
-        deleteTerm: { _ in },
-        fetchDueTerms: { _, _ in [] }
-    )
+    static let previewValue: Self = {
+        let mockTerms = Term.mockList
+        return Self(
+            fetchTerms: { query in
+                if let query = query, !query.isEmpty {
+                    return mockTerms.filter {
+                        $0.termText.localizedStandardContains(query) ||
+                        $0.translation.localizedStandardContains(query)
+                    }
+                }
+                return mockTerms
+            },
+            fetchTerm: { id in mockTerms.first(where: { $0.id == id }) },
+            addTerm: { _ in },
+            updateTerm: { _ in },
+            deleteTerm: { _ in },
+            fetchDueTerms: { _, _ in [] }
+        )
+    }()
 }
 
 extension DependencyValues {

@@ -6,20 +6,17 @@
 import ComposableArchitecture
 import SwiftUI
 
-public struct AppView: View {
+struct AppView: View {
     @Bindable var store: StoreOf<AppFeature>
     
-    public init(store: StoreOf<AppFeature>) {
+    init(store: StoreOf<AppFeature>) {
         self.store = store
     }
     
     public var body: some View {
         TabView(selection: $store.selectedTab.sending(\.selectTab)) {
             
-            NavigationStack {
-                Text("Dictionary Placeholder")
-                    .navigationTitle("Dictionary")
-            }
+            DictionaryView(store: store.scope(state: \.dictionary, action: \.dictionary))
             .tabItem {
                 Label("Dictionary", systemImage: "character.book.closed")
             }

@@ -8,9 +8,9 @@ import ComposableArchitecture
 import Foundation
 
 @Reducer
-public struct AppFeature {
+struct AppFeature {
      
-    public enum Tab: Equatable{
+    enum Tab: Equatable{
         case dictionary
         case flashcards
         case learning
@@ -18,22 +18,31 @@ public struct AppFeature {
     }
     
     @ObservableState
-    public struct State: Equatable{
-        public var selectedTab: Tab = .dictionary
+    struct State: Equatable{
+        var selectedTab: Tab = .dictionary
+        var dictionary = DictionaryFeature.State()
     }
     
-    public enum Action: Equatable {
+    enum Action: Equatable {
         case selectTab(Tab)
+        case dictionary(DictionaryFeature.Action)
     }
     
     public var body: some Reducer<State, Action> {
+        Scope(state: \.dictionary, action: \.dictionary) {
+            DictionaryFeature()
+        }
+        
         Reduce{ state, action in
             switch action{
             case let .selectTab(tab):
                 state.selectedTab = tab
+                return .none
+            case .dictionary:
                 return .none
             }
         }
     }
     
 }
+

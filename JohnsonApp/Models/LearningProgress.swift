@@ -34,3 +34,15 @@ class LearningProgress {
         self.lapses = lapses
     }
 }
+
+extension LearningProgress: Equatable {
+    static func == (lhs: LearningProgress, rhs: LearningProgress) -> Bool {
+        lhs.stability == rhs.stability &&
+        lhs.difficulty == rhs.difficulty &&
+        lhs.dueDate == rhs.dueDate &&
+        lhs.lastReviewDate == rhs.lastReviewDate &&
+        lhs.repetitions == rhs.repetitions &&
+        lhs.lapses == rhs.lapses
+    }
+}
+
