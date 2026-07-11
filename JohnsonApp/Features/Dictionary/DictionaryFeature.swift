@@ -8,13 +8,22 @@ import Foundation
 
 @Reducer
 struct DictionaryFeature {
-    enum StatusFilter: String, CaseIterable, Identifiable, Equatable, Codable {
-        case all = "Всі"
-        case new = "Нові"
-        case learning = "В процесі"
-        case mastered = "Засвоєні"
+    enum StatusFilter: CaseIterable, Identifiable, Equatable {
+        case all
+        case new
+        case learning
+        case mastered
         
-        var id: String { self.rawValue }
+        var id: Self { self }
+        
+        var title: String {
+            switch self {
+            case .all: return "Всі"
+            case .new: return "Нові"
+            case .learning: return "В процесі"
+            case .mastered: return "Засвоєні"
+            }
+        }
         
         var learningStatus: LearningStatus? {
             switch self {

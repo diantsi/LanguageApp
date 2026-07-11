@@ -3,7 +3,7 @@
 //  JohnsonApp
 //
 
-import SwiftUI
+import Foundation
 import SwiftData
 
 

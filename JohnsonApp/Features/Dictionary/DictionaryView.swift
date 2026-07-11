@@ -17,7 +17,7 @@ struct DictionaryView: View {
                 searchBar()
                 Picker("Статус", selection: $store.statusFilter.sending(\.statusFilterChanged)) {
                     ForEach(DictionaryFeature.StatusFilter.allCases) { filter in
-                        Text(filter.rawValue).tag(filter)
+                        Text(filter.title).tag(filter)
                     }
                 }
                 .pickerStyle(.segmented)
