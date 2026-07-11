@@ -71,6 +71,7 @@ struct DictionaryFeature {
     }
 
     @Dependency(\.persistenceClient) var persistenceClient
+    @Dependency(\.importClient) var importClient
     @Dependency(\.continuousClock) var clock
 
     private let pageSize = 40
@@ -145,6 +146,7 @@ struct DictionaryFeature {
                 return .none
 
             case .addButtonTapped:
+                
                 return .none
 
             case .termTapped:
