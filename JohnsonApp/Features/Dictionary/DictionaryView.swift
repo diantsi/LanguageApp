@@ -9,10 +9,6 @@ import SwiftUI
 struct DictionaryView: View {
     @Bindable var store: StoreOf<DictionaryFeature>
     
-    init(store: StoreOf<DictionaryFeature>) {
-        self.store = store
-    }
-    
     public var body: some View {
         NavigationStack {
             VStack(alignment: .leading, spacing: 20) {
@@ -29,8 +25,12 @@ struct DictionaryView: View {
                 
                 if store.isLoading && store.terms.isEmpty {
                     Spacer()
-                    ProgressView("Завантаження словника...")
-                        .tint(.accentColor)
+                    HStack {
+                        Spacer()
+                        ProgressView("Завантаження словника...")
+                            .tint(.accentColor)
+                        Spacer()
+                    }
                     Spacer()
                 } else if store.terms.isEmpty {
                     Spacer()
@@ -41,15 +41,24 @@ struct DictionaryView: View {
                         LazyVStack (alignment: .leading, spacing: 20){
                             ForEach(store.terms) { term in
                                 termCardView(for: term)
-                                    .listRowSeparator(.hidden)
                                     .onTapGesture {
                                         store.send(.termTapped(term))
                                     }
                             }
                             
+                            if store.hasMore {
+                                HStack {
+                                    Spacer()
+                                    ProgressView()
+                                        .onAppear {
+                                            store.send(.loadMoreTerms)
+                                        }
+                                    Spacer()
+                                }
+                                .padding(.vertical)
+                            }
                         }
-                }
-                    
+                    }
                 }
             }
             .padding(.horizontal, 20)
@@ -60,7 +69,6 @@ struct DictionaryView: View {
                     } label: {
                         Image(systemName: "plus")
                             .font(.title3)
-                            .foregroundColor(.accentColor)
                     }
                 }
             }
@@ -71,7 +79,7 @@ struct DictionaryView: View {
     }
     
     private func searchBar() -> some View {
-        HStack(){
+        HStack {
             Image(systemName: "magnifyingglass")
             TextField("пошук термів", text: $store.searchQuery.sending(\.searchQueryChanged))
                 .foregroundStyle(.secondary)
@@ -83,7 +91,6 @@ struct DictionaryView: View {
             RoundedRectangle(cornerRadius: 12)
                 .stroke(Color.gray, lineWidth: 1)
         )
-        
     }
     
     private func termCardView(for term: Term) -> some View {
@@ -93,11 +100,11 @@ struct DictionaryView: View {
                     Text(term.termText)
                         .font(.title3)
                         .fontWeight(.bold)
-                        .foregroundColor(.primary)
+                        .foregroundStyle(.primary)
                     
                     Text(term.translation)
                         .font(.body)
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                 }
                 
                 Spacer()
@@ -111,11 +118,11 @@ struct DictionaryView: View {
                 HStack(spacing: 4) {
                     Image(systemName: "pencil.line")
                         .font(.caption)
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                     Text(hint)
                         .font(.caption)
                         .italic()
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                 }
             }
         }
@@ -135,7 +142,7 @@ struct DictionaryView: View {
             .fontWeight(.bold)
             .padding(.horizontal, 10)
             .padding(.vertical, 4)
-            .foregroundColor(textColor)
+            .foregroundStyle(textColor)
             .background(backgroundColor)
             .clipShape(Capsule())
     }
@@ -167,25 +174,23 @@ struct DictionaryView: View {
         VStack(spacing: 16) {
             Image(systemName: "character.book.closed")
                 .font(.system(size: 60))
-                .foregroundColor(.secondary)
+                .foregroundStyle(.secondary)
             
             Text("Додайте слова, щоб розпочати вивчення та тренування.")
                 .font(.title2)
-                .foregroundColor(.secondary)
+                .foregroundStyle(.secondary)
                 .padding(.horizontal, 32)
             
             Button {
                 store.send(.addButtonTapped)
             } label: {
                 Label("Додати слова", systemImage: "plus")
-                    
             }
             .padding(.horizontal, 32)
             .padding(.top, 8)
         }
         .padding()
         .multilineTextAlignment(.center)
-
     }
 }
 

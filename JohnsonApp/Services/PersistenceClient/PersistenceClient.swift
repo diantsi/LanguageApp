@@ -9,7 +9,7 @@ import Foundation
 import SwiftData
 
 struct PersistenceClient {
-    var fetchTerms: @Sendable (String?) async throws -> [Term]
+    var fetchTerms: @Sendable (String?, LearningStatus?, Int?, Int?) async throws -> [Term]
     var fetchTerm: @Sendable (UUID) async throws -> Term?
     var addTerm: @Sendable (Term) async throws -> Void
     var updateTerm: @Sendable (Term) async throws -> Void
@@ -19,34 +19,43 @@ struct PersistenceClient {
 
 @ModelActor
 actor DatabaseActor {
-    func fetchTerms(query: String?) throws -> [Term] {
-        let descriptor: FetchDescriptor<Term>
+    func fetchTerms(query: String?, status: LearningStatus?, limit: Int?, offset: Int?) throws -> [Term] {
+        let q = query ?? ""
+        let hasQuery = !q.isEmpty
+
+        let predicate = hasQuery ? #Predicate<Term> { term in
+            term.termText.localizedStandardContains(q) || term.translation.localizedStandardContains(q)
+        } : nil
+
+        let descriptor = FetchDescriptor<Term>(
+            predicate: predicate,
+            sortBy: [SortDescriptor(\.createdAt, order: .reverse)]
+        )
         
-        if let query = query, !query.isEmpty {
-            descriptor = FetchDescriptor<Term>(
-                predicate: #Predicate {
-                    $0.termText.localizedStandardContains(query) ||
-                    $0.translation.localizedStandardContains(query)
-                },
-                sortBy: [SortDescriptor(\.createdAt, order: .reverse)]
-            )
-        } else {
-            descriptor = FetchDescriptor<Term>(sortBy: [SortDescriptor(\.createdAt, order: .reverse)])
+        var terms = try modelContext.fetch(descriptor)
+        
+        if let status {
+            terms = terms.filter { $0.status == status }
         }
         
-        return try modelContext.fetch(descriptor)
+        let start = offset ?? 0
+        if start >= terms.count {
+            return []
+        }
+        let end = limit != nil ? min(start + limit!, terms.count) : terms.count
+        return Array(terms[start..<end])
     }
-    
+
     func fetchTerm(id: UUID) throws -> Term? {
         let descriptor = FetchDescriptor<Term>(predicate: #Predicate { $0.id == id })
         return try modelContext.fetch(descriptor).first
     }
-    
+
     func addTerm(_ term: Term) throws {
         modelContext.insert(term)
         try modelContext.save()
     }
-    
+
     func updateTerm(_ term: Term) throws {
         if let localTerm = try fetchTerm(id: term.id) {
             localTerm.termText = term.termText
@@ -58,7 +67,7 @@ actor DatabaseActor {
             try modelContext.save()
         }
     }
-    
+
     func deleteTerm(id: UUID) throws {
         let descriptor = FetchDescriptor<Term>(predicate: #Predicate { $0.id == id })
         if let term = try modelContext.fetch(descriptor).first {
@@ -66,23 +75,24 @@ actor DatabaseActor {
             try modelContext.save()
         }
     }
-    
+
     func fetchDueTerms(date: Date, limit: Int) throws -> [Term] {
-        let descriptor = FetchDescriptor<Term>()
-        let terms = try modelContext.fetch(descriptor)
-        return Array(terms.filter { term in
-            guard let progress = term.learningProgress else { return false }
-            return progress.dueDate <= date
-        }.prefix(limit))
+        var descriptor = FetchDescriptor<LearningProgress>(
+            predicate: #Predicate { $0.dueDate <= date },
+            sortBy: [SortDescriptor(\.dueDate)]
+        )
+        descriptor.fetchLimit = limit
+        let progresses = try modelContext.fetch(descriptor)
+        return progresses.compactMap { $0.term }
     }
 }
 
 extension PersistenceClient: DependencyKey {
-    static var liveValue: Self {
-        let actor = DatabaseActor(modelContainer: SwiftDataModelContainer.shared)
+    static func live(modelContainer: ModelContainer) -> Self {
+        let actor = DatabaseActor(modelContainer: modelContainer)
         return Self(
-            fetchTerms: { query in
-                try await actor.fetchTerms(query: query)
+            fetchTerms: { query, status, limit, offset in
+                try await actor.fetchTerms(query: query, status: status, limit: limit, offset: offset)
             },
             fetchTerm: { id in
                 try await actor.fetchTerm(id: id)
@@ -101,28 +111,36 @@ extension PersistenceClient: DependencyKey {
             }
         )
     }
-    
+
+    static var liveValue: Self { live(modelContainer: SwiftDataModelContainer.shared) }
+
     static let testValue = Self(
-        fetchTerms: { _ in [] },
+        fetchTerms: { _, _, _, _ in [] },
         fetchTerm: { _ in nil },
         addTerm: { _ in },
         updateTerm: { _ in },
         deleteTerm: { _ in },
         fetchDueTerms: { _, _ in [] }
     )
-    
-    
+
     static let previewValue: Self = {
         let mockTerms = Term.mockList
         return Self(
-            fetchTerms: { query in
-                if let query = query, !query.isEmpty {
-                    return mockTerms.filter {
+            fetchTerms: { query, status, limit, offset in
+                var result = mockTerms
+                if let query, !query.isEmpty {
+                    result = result.filter {
                         $0.termText.localizedStandardContains(query) ||
                         $0.translation.localizedStandardContains(query)
                     }
                 }
-                return mockTerms
+                if let status {
+                    result = result.filter { $0.status == status }
+                }
+                let start = offset ?? 0
+                if start >= result.count { return [] }
+                let end = limit != nil ? min(start + limit!, result.count) : result.count
+                return Array(result[start..<end])
             },
             fetchTerm: { id in mockTerms.first(where: { $0.id == id }) },
             addTerm: { _ in },
