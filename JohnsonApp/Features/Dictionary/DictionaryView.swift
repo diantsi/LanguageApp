@@ -75,6 +75,9 @@ struct DictionaryView: View {
             .onAppear {
                 store.send(.onAppear)
             }
+            .sheet(item: $store.scope(state: \.addTerms, action: \.addTerms)) { addTermsStore in
+                AddTermsView(store: addTermsStore)
+            }
         }
     }
     

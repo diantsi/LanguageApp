@@ -7,22 +7,6 @@ import ComposableArchitecture
 import Foundation
 
 
-struct ParsedTerm: Equatable {
-    var termText: String
-    var translation: String
-    var hint: String?
-}
-
-struct InvalidLine: Equatable {
-    var lineNumber: Int
-    var content: String
-}
-
-struct ImportResult: Equatable {
-    var validTerms: [ParsedTerm]
-    var invalidLines: [InvalidLine]
-}
-
 
 struct ImportClient {
     var parse: @Sendable (String) -> ImportResult

@@ -13,9 +13,7 @@ struct DictionaryFeature {
         case new
         case learning
         case mastered
-        
         var id: Self { self }
-        
         var title: String {
             switch self {
             case .all: return "Всі"
@@ -24,7 +22,6 @@ struct DictionaryFeature {
             case .mastered: return "Засвоєні"
             }
         }
-        
         var learningStatus: LearningStatus? {
             switch self {
             case .all: return nil
@@ -42,6 +39,7 @@ struct DictionaryFeature {
         var statusFilter: StatusFilter = .all
         var isLoading: Bool = false
         var hasMore: Bool = true
+        @Presents var addTerms: AddTermsFeature.State?
 
         init(
             terms: [Term] = [],
@@ -68,10 +66,10 @@ struct DictionaryFeature {
         case loadMoreTerms
         case addButtonTapped
         case termTapped(Term)
+        case addTerms(PresentationAction<AddTermsFeature.Action>)
     }
 
     @Dependency(\.persistenceClient) var persistenceClient
-    @Dependency(\.importClient) var importClient
     @Dependency(\.continuousClock) var clock
 
     private let pageSize = 40
@@ -100,7 +98,6 @@ struct DictionaryFeature {
                 state.terms = []
                 state.hasMore = true
                 return .send(.fetchTerms)
-                
             case .fetchTerms:
                 let query = state.searchQuery
                 let status = state.statusFilter.learningStatus
@@ -146,12 +143,24 @@ struct DictionaryFeature {
                 return .none
 
             case .addButtonTapped:
-                
+                state.addTerms = AddTermsFeature.State()
                 return .none
 
             case .termTapped:
                 return .none
+
+            case .addTerms(.presented(.delegate(.termsSaved))):
+                state.addTerms = nil
+                state.terms = []
+                state.hasMore = true
+                return .send(.fetchTerms)
+
+            case .addTerms:
+                return .none
             }
+        }
+        .ifLet(\.$addTerms, action: \.addTerms) {
+            AddTermsFeature()
         }
     }
 }
