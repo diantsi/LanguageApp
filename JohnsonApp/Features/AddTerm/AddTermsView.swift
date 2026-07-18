@@ -221,51 +221,26 @@ struct AddTermsView: View {
                 .foregroundStyle(.secondary)
 
             ForEach(store.parsedTerms) { term in
-                parsedTermCard(term)
-                    .opacity(store.duplicateIDs.contains(term.id) ? 0.45 : 1)
+                TermCardView(
+                    termText: term.termText,
+                    translation: term.translation,
+                    hint: term.hint,
+                    onDelete: { store.send(.removeTermTapped(term.id)) }
+                ) {
+                    if store.duplicateIDs.contains(term.id) {
+                        Label("ДУБЛІКАТ", systemImage: "doc.on.doc.fill")
+                            .font(.caption2)
+                            .fontWeight(.bold)
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 4)
+                            .foregroundStyle(.orange)
+                            .background(Color.orange.opacity(0.12))
+                            .clipShape(Capsule())
+                    }
+                }
+                .opacity(store.duplicateIDs.contains(term.id) ? 0.45 : 1)
             }
         }
-    }
-
-    private func parsedTermCard(_ term: ParsedTerm) -> some View {
-        HStack(alignment: .top, spacing: 12) {
-            VStack(alignment: .leading, spacing: 4) {
-                Text(term.termText)
-                    .font(.body)
-                    .fontWeight(.semibold)
-                    .foregroundStyle(store.duplicateIDs.contains(term.id) ? .secondary : .primary)
-
-                Text(term.translation)
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-
-                if let hint = term.hint {
-                    Text(hint)
-                        .font(.caption)
-                        .italic()
-                        .foregroundStyle(.tertiary)
-                }
-            }
-
-            Spacer()
-
-            if store.duplicateIDs.contains(term.id) {
-                Label("Дублікат", systemImage: "doc.on.doc.fill")
-                    .font(.caption2)
-                    .foregroundStyle(.orange)
-            } else {
-                Button {
-                    store.send(.removeTermTapped(term.id))
-                } label: {
-                    Image(systemName: "xmark.circle.fill")
-                        .foregroundStyle(.secondary)
-                        .imageScale(.medium)
-                }
-            }
-        }
-        .padding(14)
-        .background(Color(.secondarySystemGroupedBackground))
-        .clipShape(RoundedRectangle(cornerRadius: 12))
     }
 }
 

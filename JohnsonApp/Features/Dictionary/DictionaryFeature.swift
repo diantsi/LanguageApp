@@ -40,19 +40,24 @@ struct DictionaryFeature {
         var isLoading: Bool = false
         var hasMore: Bool = true
         @Presents var addTerms: AddTermsFeature.State?
+        @Presents var alert: AlertState<Action.Alert>?
 
         init(
             terms: [Term] = [],
             searchQuery: String = "",
             statusFilter: StatusFilter = .all,
             isLoading: Bool = false,
-            hasMore: Bool = true
+            hasMore: Bool = true,
+            addTerms: AddTermsFeature.State? = nil,
+            alert: AlertState<Action.Alert>? = nil
         ) {
             self.terms = terms
             self.searchQuery = searchQuery
             self.statusFilter = statusFilter
             self.isLoading = isLoading
             self.hasMore = hasMore
+            self.addTerms = addTerms
+            self.alert = alert
         }
     }
 
@@ -67,6 +72,12 @@ struct DictionaryFeature {
         case addButtonTapped
         case termTapped(Term)
         case addTerms(PresentationAction<AddTermsFeature.Action>)
+        case deleteButtonTapped(Term)
+        case alert(PresentationAction<Alert>)
+
+        enum Alert: Equatable {
+            case confirmDelete(Term)
+        }
     }
 
     @Dependency(\.persistenceClient) var persistenceClient
@@ -157,10 +168,41 @@ struct DictionaryFeature {
 
             case .addTerms:
                 return .none
+
+            case let .deleteButtonTapped(term):
+                state.alert = AlertState {
+                    TextState("Видалити термін?")
+                } actions: {
+                    ButtonState(role: .destructive, action: .confirmDelete(term)) {
+                        TextState("Видалити")
+                    }
+                    ButtonState(role: .cancel) {
+                        TextState("Скасувати")
+                    }
+                } message: {
+                    TextState("Ви впевнені, що хочете видалити термін \"\(term.termText)\"?")
+                }
+                return .none
+
+            case let .alert(.presented(.confirmDelete(term))):
+                let id = term.id
+                state.isLoading = true
+                return .run { [persistenceClient] send in
+                    do {
+                        try await persistenceClient.deleteTerm(id)
+                        await send(.fetchTerms)
+                    } catch {
+                        await send(.fetchTermsFailure(error.localizedDescription))
+                    }
+                }
+
+            case .alert:
+                return .none
             }
         }
         .ifLet(\.$addTerms, action: \.addTerms) {
             AddTermsFeature()
         }
+        .ifLet(\.$alert, action: \.alert)
     }
 }

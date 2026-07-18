@@ -40,10 +40,17 @@ struct DictionaryView: View {
                     ScrollView {
                         LazyVStack (alignment: .leading, spacing: 20){
                             ForEach(store.terms) { term in
-                                termCardView(for: term)
-                                    .onTapGesture {
-                                        store.send(.termTapped(term))
-                                    }
+                                TermCardView(
+                                    termText: term.termText,
+                                    translation: term.translation,
+                                    hint: term.hint,
+                                    onDelete: { store.send(.deleteButtonTapped(term)) }
+                                ) {
+                                    statusBadge(for: term.status)
+                                }
+                                .onTapGesture {
+                                    store.send(.termTapped(term))
+                                }
                             }
                             
                             if store.hasMore {
@@ -78,6 +85,7 @@ struct DictionaryView: View {
             .sheet(item: $store.scope(state: \.addTerms, action: \.addTerms)) { addTermsStore in
                 AddTermsView(store: addTermsStore)
             }
+            .alert($store.scope(state: \.alert, action: \.alert))
         }
     }
     
@@ -93,47 +101,6 @@ struct DictionaryView: View {
         .overlay(
             RoundedRectangle(cornerRadius: 12)
                 .stroke(Color.gray, lineWidth: 1)
-        )
-    }
-    
-    private func termCardView(for term: Term) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack(alignment: .top) {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(term.termText)
-                        .font(.title3)
-                        .fontWeight(.bold)
-                        .foregroundStyle(.primary)
-                    
-                    Text(term.translation)
-                        .font(.body)
-                        .foregroundStyle(.secondary)
-                }
-                
-                Spacer()
-                statusBadge(for: term.status)
-            }
-            
-            if let hint = term.hint, !hint.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                Divider()
-                    .padding(.top, 4)
-                
-                HStack(spacing: 4) {
-                    Image(systemName: "pencil.line")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                    Text(hint)
-                        .font(.caption)
-                        .italic()
-                        .foregroundStyle(.secondary)
-                }
-            }
-        }
-        .padding()
-        .background(
-            RoundedRectangle(cornerRadius: 16)
-                .fill(Color(.secondarySystemGroupedBackground))
-                .shadow(color: Color.black.opacity(0.04), radius: 5, x: 0, y: 2)
         )
     }
     
