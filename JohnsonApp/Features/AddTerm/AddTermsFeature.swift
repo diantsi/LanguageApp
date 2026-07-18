@@ -121,16 +121,16 @@ struct AddTermsFeature {
                 let translationLanguage = state.translationLanguage
                 return .run { [toSave] send in
                     do {
-                        for parsed in toSave {
-                            let term = Term(
+                        let terms = toSave.map { parsed in
+                            Term(
                                 termText: parsed.termText,
                                 translation: parsed.translation,
                                 hint: parsed.hint,
                                 termLanguage: termLanguage,
                                 translationLanguage: translationLanguage
                             )
-                            try await persistenceClient.addTerm(term)
                         }
+                        try await persistenceClient.addTerms(terms)
                         await send(.saveCompleted)
                     } catch {
                         await send(.saveFailure(error.localizedDescription))

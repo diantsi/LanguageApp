@@ -49,6 +49,29 @@ final class PersistenceClientTests: XCTestCase {
         XCTAssertEqual(fetchedTerms.first?.learningProgress?.stability, 0.0)
     }
 
+    func testAddTermsBatch() async throws {
+        let term1 = Term(
+            termText: "apple",
+            translation: "яблуко",
+            termLanguage: .english,
+            translationLanguage: .ukrainian
+        )
+        let term2 = Term(
+            termText: "banana",
+            translation: "банан",
+            termLanguage: .english,
+            translationLanguage: .ukrainian
+        )
+
+        try await client.addTerms([term1, term2])
+
+        let fetchedTerms = try await client.fetchTerms(nil, nil, nil, nil)
+        XCTAssertEqual(fetchedTerms.count, 2)
+        let texts = fetchedTerms.map { $0.termText }
+        XCTAssertTrue(texts.contains("apple"))
+        XCTAssertTrue(texts.contains("banana"))
+    }
+
     func testFetchTermById() async throws {
         let id = UUID()
         let term = Term(

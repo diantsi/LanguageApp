@@ -12,6 +12,7 @@ struct PersistenceClient {
     var fetchTerms: @Sendable (String?, LearningStatus?, Int?, Int?) async throws -> [Term]
     var fetchTerm: @Sendable (UUID) async throws -> Term?
     var addTerm: @Sendable (Term) async throws -> Void
+    var addTerms: @Sendable ([Term]) async throws -> Void
     var updateTerm: @Sendable (Term) async throws -> Void
     var deleteTerm: @Sendable (UUID) async throws -> Void
     var fetchDueTerms: @Sendable (Date, Int) async throws -> [Term]
@@ -53,6 +54,13 @@ actor DatabaseActor {
 
     func addTerm(_ term: Term) throws {
         modelContext.insert(term)
+        try modelContext.save()
+    }
+
+    func addTerms(_ terms: [Term]) throws {
+        for term in terms {
+            modelContext.insert(term)
+        }
         try modelContext.save()
     }
 
@@ -100,6 +108,9 @@ extension PersistenceClient: DependencyKey {
             addTerm: { term in
                 try await actor.addTerm(term)
             },
+            addTerms: { terms in
+                try await actor.addTerms(terms)
+            },
             updateTerm: { term in
                 try await actor.updateTerm(term)
             },
@@ -118,6 +129,7 @@ extension PersistenceClient: DependencyKey {
         fetchTerms: { _, _, _, _ in [] },
         fetchTerm: { _ in nil },
         addTerm: { _ in },
+        addTerms: { _ in },
         updateTerm: { _ in },
         deleteTerm: { _ in },
         fetchDueTerms: { _, _ in [] }
@@ -144,6 +156,7 @@ extension PersistenceClient: DependencyKey {
             },
             fetchTerm: { id in mockTerms.first(where: { $0.id == id }) },
             addTerm: { _ in },
+            addTerms: { _ in },
             updateTerm: { _ in },
             deleteTerm: { _ in },
             fetchDueTerms: { _, _ in [] }

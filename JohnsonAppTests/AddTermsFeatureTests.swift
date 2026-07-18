@@ -105,7 +105,7 @@ final class AddTermsFeatureTests: XCTestCase {
             AddTermsFeature()
         } withDependencies: {
             $0.persistenceClient.fetchTerms = { _, _, _, _ in [] }
-            $0.persistenceClient.addTerm = { savedTerms.append($0) }
+            $0.persistenceClient.addTerms = { savedTerms.append(contentsOf: $0) }
         }
 
         await store.send(.saveButtonTapped) { $0.isLoading = true }
@@ -149,7 +149,7 @@ final class AddTermsFeatureTests: XCTestCase {
             AddTermsFeature()
         } withDependencies: {
             $0.persistenceClient.fetchTerms = { _, _, _, _ in [existing] }
-            $0.persistenceClient.addTerm = { savedTerms.append($0) }
+            $0.persistenceClient.addTerms = { savedTerms.append(contentsOf: $0) }
         }
 
         await store.send(.saveButtonTapped) { $0.isLoading = true }
@@ -179,7 +179,7 @@ final class AddTermsFeatureTests: XCTestCase {
             AddTermsFeature()
         } withDependencies: {
             $0.persistenceClient.fetchTerms = { _, _, _, _ in [existing] }
-            $0.persistenceClient.addTerm = { savedTerms.append($0) }
+            $0.persistenceClient.addTerms = { savedTerms.append(contentsOf: $0) }
         }
 
         await store.send(.saveButtonTapped) { $0.isLoading = true }
