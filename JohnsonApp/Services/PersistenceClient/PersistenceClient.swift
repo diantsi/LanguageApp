@@ -16,6 +16,7 @@ struct PersistenceClient {
     var updateTerm: @Sendable (Term) async throws -> Void
     var deleteTerm: @Sendable (UUID) async throws -> Void
     var fetchDueTerms: @Sendable (Date, Int) async throws -> [Term]
+    var termExists: @Sendable (String, String) async throws -> Bool
 }
 
 @ModelActor
@@ -93,6 +94,27 @@ actor DatabaseActor {
         let progresses = try modelContext.fetch(descriptor)
         return progresses.compactMap { $0.term }
     }
+
+    func termExists(termText: String, translation: String) throws -> Bool {
+        let normalizedTerm = termText.trimmingCharacters(in: .whitespaces)
+        let normalizedTranslation = translation.trimmingCharacters(in: .whitespaces)
+        
+        let descriptor = FetchDescriptor<Term>(
+            predicate: #Predicate {
+                $0.termText.localizedStandardContains(normalizedTerm) &&
+                $0.translation.localizedStandardContains(normalizedTranslation)
+            }
+        )
+        let candidates = try modelContext.fetch(descriptor)
+        
+        let lowercasedTerm = normalizedTerm.lowercased()
+        let lowercasedTranslation = normalizedTranslation.lowercased()
+        
+        return candidates.contains { candidate in
+            candidate.termText.trimmingCharacters(in: .whitespaces).lowercased() == lowercasedTerm &&
+            candidate.translation.trimmingCharacters(in: .whitespaces).lowercased() == lowercasedTranslation
+        }
+    }
 }
 
 extension PersistenceClient: DependencyKey {
@@ -119,6 +141,9 @@ extension PersistenceClient: DependencyKey {
             },
             fetchDueTerms: { date, limit in
                 try await actor.fetchDueTerms(date: date, limit: limit)
+            },
+            termExists: { termText, translation in
+                try await actor.termExists(termText: termText, translation: translation)
             }
         )
     }
@@ -132,7 +157,8 @@ extension PersistenceClient: DependencyKey {
         addTerms: { _ in },
         updateTerm: { _ in },
         deleteTerm: { _ in },
-        fetchDueTerms: { _, _ in [] }
+        fetchDueTerms: { _, _ in [] },
+        termExists: { _, _ in false }
     )
 
     static let previewValue: Self = {
@@ -159,7 +185,15 @@ extension PersistenceClient: DependencyKey {
             addTerms: { _ in },
             updateTerm: { _ in },
             deleteTerm: { _ in },
-            fetchDueTerms: { _, _ in [] }
+            fetchDueTerms: { _, _ in [] },
+            termExists: { termText, translation in
+                let normalizedTerm = termText.trimmingCharacters(in: .whitespaces).lowercased()
+                let normalizedTranslation = translation.trimmingCharacters(in: .whitespaces).lowercased()
+                return mockTerms.contains {
+                    $0.termText.trimmingCharacters(in: .whitespaces).lowercased() == normalizedTerm &&
+                    $0.translation.trimmingCharacters(in: .whitespaces).lowercased() == normalizedTranslation
+                }
+            }
         )
     }()
 }

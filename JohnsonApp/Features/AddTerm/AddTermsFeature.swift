@@ -23,7 +23,6 @@ struct AddTermsFeature {
 
         var canSave: Bool { isParsed && !parsedTerms.isEmpty && !isLoading }
         var hasDuplicates: Bool { !duplicateIDs.isEmpty }
-
         init(
             inputText: String = "",
             parsedTerms: [ParsedTerm] = [],
@@ -48,10 +47,9 @@ struct AddTermsFeature {
     enum Action: Equatable {
         case inputTextChanged(String)
         case parseButtonTapped
-        case parseCompleted(ImportResult)
+        case parseCompleted(ImportResult, [UUID])
         case removeTermTapped(UUID)
         case saveButtonTapped
-        case duplicatesChecked([UUID])
         case saveCompleted
         case saveFailure(String)
         case cancelButtonTapped
@@ -65,7 +63,8 @@ struct AddTermsFeature {
     @Dependency(\.importClient) var importClient
     @Dependency(\.persistenceClient) var persistenceClient
     @Dependency(\.dismiss) var dismiss
-
+    @Dependency(\.uuid) var uuid
+    @Dependency(\.date) var date
     var body: some Reducer<State, Action> {
         Reduce { state, action in
             switch action {
@@ -79,55 +78,74 @@ struct AddTermsFeature {
                 guard !state.inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return .none }
                 let text = state.inputText
                 state.isLoading = true
-                return .run { [importClient] send in
+                return .run { [importClient, persistenceClient] send in
                     let result = importClient.parse(text)
-                    await send(.parseCompleted(result))
+                    var duplicateIDs: [UUID] = []
+                    var seenTerms = Set<String>()
+                    
+                    for term in result.validTerms {
+                        let normText = term.termText
+                            .trimmingCharacters(in: .whitespaces)
+                            .lowercased()
+                            .replacingOccurrences(of: "\\s+", with: " ", options: .regularExpression)
+                        let normTranslation = term.translation
+                            .trimmingCharacters(in: .whitespaces)
+                            .lowercased()
+                            .replacingOccurrences(of: "\\s+", with: " ", options: .regularExpression)
+                        let normalizedKey = "\(normText)||\(normTranslation)"
+                        
+                        if seenTerms.contains(normalizedKey) {
+                            duplicateIDs.append(term.id)
+                        } else {
+                            seenTerms.insert(normalizedKey)
+                            do {
+                                let isDuplicate = try await persistenceClient.termExists(term.termText, term.translation)
+                                if isDuplicate {
+                                    duplicateIDs.append(term.id)
+                                }
+                            } catch {}
+                        }
+                    }
+                    await send(.parseCompleted(result, duplicateIDs))
                 }
-
-            case let .parseCompleted(result):
+                
+            case let .parseCompleted(result, duplicateIDs):
                 state.parsedTerms = result.validTerms
                 state.invalidLines = result.invalidLines
-                state.duplicateIDs = []
+                state.duplicateIDs = Set(duplicateIDs)
                 state.isParsed = true
                 state.isLoading = false
                 return .none
-
+                
             case let .removeTermTapped(id):
                 state.parsedTerms.removeAll { $0.id == id }
+                state.duplicateIDs.remove(id)
                 return .none
-
+                
             case .saveButtonTapped:
                 guard !state.parsedTerms.isEmpty else { return .none }
-                let termsToCheck = state.parsedTerms
-                state.isLoading = true
-                return .run { send in
-                    do {
-                        let existing = try await persistenceClient.fetchTerms(nil, nil, nil, nil)
-                        let ids = Self.findDuplicateIDs(among: termsToCheck, existing: existing)
-                        await send(.duplicatesChecked(ids))
-                    } catch {
-                        await send(.saveFailure(error.localizedDescription))
-                    }
-                }
-
-            case let .duplicatesChecked(ids):
-                state.duplicateIDs = Set(ids)
                 let toSave = state.parsedTerms.filter { !state.duplicateIDs.contains($0.id) }
                 guard !toSave.isEmpty else {
                     state.isLoading = false
                     return .none
                 }
+                state.isLoading = true
                 let termLanguage = state.termLanguage
                 let translationLanguage = state.translationLanguage
+                let generateUUID = self.uuid
+                let dateNow = self.date.now
                 return .run { [toSave] send in
                     do {
                         let terms = toSave.map { parsed in
                             Term(
+                                id: generateUUID(),
                                 termText: parsed.termText,
                                 translation: parsed.translation,
                                 hint: parsed.hint,
                                 termLanguage: termLanguage,
-                                translationLanguage: translationLanguage
+                                translationLanguage: translationLanguage,
+                                createdAt: dateNow,
+                                updatedAt: dateNow
                             )
                         }
                         try await persistenceClient.addTerms(terms)
@@ -136,15 +154,15 @@ struct AddTermsFeature {
                         await send(.saveFailure(error.localizedDescription))
                     }
                 }
-
+                
             case .saveCompleted:
                 state.isLoading = false
                 return .send(.delegate(.termsSaved))
-
+                
             case .saveFailure:
                 state.isLoading = false
                 return .none
-
+                
             case .cancelButtonTapped:
                 return .run { _ in await dismiss() }
 
@@ -152,24 +170,5 @@ struct AddTermsFeature {
                 return .none
             }
         }
-    }
-
-    // MARK: - Duplicate detection
-
-    nonisolated static func findDuplicateIDs(among parsed: [ParsedTerm], existing: [Term]) -> [UUID] {
-        parsed.compactMap { parsedTerm in
-            let isDuplicate = existing.contains {
-                normalize(parsedTerm.termText) == normalize($0.termText) &&
-                normalize(parsedTerm.translation) == normalize($0.translation)
-            }
-            return isDuplicate ? parsedTerm.id : nil
-        }
-    }
-
-    private nonisolated static func normalize(_ string: String) -> String {
-        string
-            .trimmingCharacters(in: .whitespaces)
-            .lowercased()
-            .replacingOccurrences(of: "\\s+", with: " ", options: .regularExpression)
     }
 }

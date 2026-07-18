@@ -35,13 +35,14 @@ final class AddTermsFeatureTests: XCTestCase {
             AddTermsFeature()
         } withDependencies: {
             $0.importClient.parse = { _ in result }
+            $0.persistenceClient.termExists = { _, _ in false }
         }
 
         await store.send(.parseButtonTapped) {
             $0.isLoading = true
         }
 
-        await store.receive(.parseCompleted(result)) {
+        await store.receive(.parseCompleted(result, [])) {
             $0.parsedTerms = [parsed]
             $0.isLoading = false
             $0.isParsed = true
@@ -65,10 +66,11 @@ final class AddTermsFeatureTests: XCTestCase {
             AddTermsFeature()
         } withDependencies: {
             $0.importClient.parse = { _ in result }
+            $0.persistenceClient.termExists = { _, _ in false }
         }
 
         await store.send(.parseButtonTapped) { $0.isLoading = true }
-        await store.receive(.parseCompleted(result)) {
+        await store.receive(.parseCompleted(result, [])) {
             $0.parsedTerms = [valid]
             $0.invalidLines = [invalid]
             $0.isLoading = false
@@ -98,27 +100,31 @@ final class AddTermsFeatureTests: XCTestCase {
     func testSaveButtonTappedSavesTermsAndNotifiesDelegate() async throws {
         let term = ParsedTerm(termText: "apple", translation: "яблуко")
         var savedTerms: [Term] = []
+        let testUUID = UUID(uuidString: "00000000-0000-0000-0000-000000000000")!
+        let testDate = Date(timeIntervalSince1970: 1234567890)
 
         let store = TestStore(
             initialState: AddTermsFeature.State(parsedTerms: [term], isParsed: true)
         ) {
             AddTermsFeature()
         } withDependencies: {
-            $0.persistenceClient.fetchTerms = { _, _, _, _ in [] }
             $0.persistenceClient.addTerms = { savedTerms.append(contentsOf: $0) }
+            $0.uuid = .constant(testUUID)
+            $0.date = .constant(testDate)
         }
 
         await store.send(.saveButtonTapped) { $0.isLoading = true }
-
-        await store.receive(.duplicatesChecked([])) // no duplicates — no state change
 
         await store.receive(.saveCompleted) { $0.isLoading = false }
 
         await store.receive(.delegate(.termsSaved))
 
         XCTAssertEqual(savedTerms.count, 1)
+        XCTAssertEqual(savedTerms[0].id, testUUID)
         XCTAssertEqual(savedTerms[0].termText, "apple")
         XCTAssertEqual(savedTerms[0].translation, "яблуко")
+        XCTAssertEqual(savedTerms[0].createdAt, testDate)
+        XCTAssertEqual(savedTerms[0].updatedAt, testDate)
     }
 
     func testSaveButtonTappedWithEmptyListDoesNothing() async throws {
@@ -133,7 +139,7 @@ final class AddTermsFeatureTests: XCTestCase {
 
     // MARK: - Duplicate detection
 
-    func testDuplicateTermsAreSkippedOnSave() async throws {
+    func testDuplicateTermsAreDetectedOnParse() async throws {
         let existing = Term(
             termText: "apple",
             translation: "яблуко",
@@ -141,28 +147,40 @@ final class AddTermsFeatureTests: XCTestCase {
             translationLanguage: .ukrainian
         )
         let parsed = ParsedTerm(termText: "apple", translation: "яблуко")
+        let result = ImportResult(validTerms: [parsed], invalidLines: [])
         var savedTerms: [Term] = []
 
+        let testUUID = UUID(uuidString: "00000000-0000-0000-0000-000000000000")!
+        let testDate = Date(timeIntervalSince1970: 1234567890)
+
         let store = TestStore(
-            initialState: AddTermsFeature.State(parsedTerms: [parsed], isParsed: true)
+            initialState: AddTermsFeature.State(inputText: "apple - яблуко")
         ) {
             AddTermsFeature()
         } withDependencies: {
-            $0.persistenceClient.fetchTerms = { _, _, _, _ in [existing] }
+            $0.importClient.parse = { _ in result }
+            $0.persistenceClient.termExists = { termText, translation in
+                termText.lowercased() == existing.termText.lowercased() &&
+                translation.lowercased() == existing.translation.lowercased()
+            }
             $0.persistenceClient.addTerms = { savedTerms.append(contentsOf: $0) }
+            $0.uuid = .constant(testUUID)
+            $0.date = .constant(testDate)
         }
 
-        await store.send(.saveButtonTapped) { $0.isLoading = true }
-
-        await store.receive(.duplicatesChecked([parsed.id])) {
+        await store.send(.parseButtonTapped) { $0.isLoading = true }
+        await store.receive(.parseCompleted(result, [parsed.id])) {
+            $0.parsedTerms = [parsed]
             $0.duplicateIDs = [parsed.id]
             $0.isLoading = false
+            $0.isParsed = true
         }
 
+        await store.send(.saveButtonTapped)
         XCTAssertTrue(savedTerms.isEmpty)
     }
 
-    func testPartialDuplicatesOnlySavesNewTerms() async throws {
+    func testPartialDuplicatesDetectedOnParseAndOnlyNewSaves() async throws {
         let existing = Term(
             termText: "apple",
             translation: "яблуко",
@@ -171,69 +189,75 @@ final class AddTermsFeatureTests: XCTestCase {
         )
         let duplicate = ParsedTerm(termText: "apple", translation: "яблуко")
         let newTerm = ParsedTerm(termText: "banana", translation: "банан")
+        let result = ImportResult(validTerms: [duplicate, newTerm], invalidLines: [])
         var savedTerms: [Term] = []
 
+        let testUUID = UUID(uuidString: "00000000-0000-0000-0000-000000000000")!
+        let testDate = Date(timeIntervalSince1970: 1234567890)
+
         let store = TestStore(
-            initialState: AddTermsFeature.State(parsedTerms: [duplicate, newTerm], isParsed: true)
+            initialState: AddTermsFeature.State(inputText: "apple - яблуко\nbanana - банан")
         ) {
             AddTermsFeature()
         } withDependencies: {
-            $0.persistenceClient.fetchTerms = { _, _, _, _ in [existing] }
+            $0.importClient.parse = { _ in result }
+            $0.persistenceClient.termExists = { termText, translation in
+                termText.lowercased() == existing.termText.lowercased() &&
+                translation.lowercased() == existing.translation.lowercased()
+            }
             $0.persistenceClient.addTerms = { savedTerms.append(contentsOf: $0) }
+            $0.uuid = .constant(testUUID)
+            $0.date = .constant(testDate)
+        }
+
+        await store.send(.parseButtonTapped) { $0.isLoading = true }
+        await store.receive(.parseCompleted(result, [duplicate.id])) {
+            $0.parsedTerms = [duplicate, newTerm]
+            $0.duplicateIDs = [duplicate.id]
+            $0.isLoading = false
+            $0.isParsed = true
         }
 
         await store.send(.saveButtonTapped) { $0.isLoading = true }
+        await store.receive(.saveCompleted) { $0.isLoading = false }
+        await store.receive(.delegate(.termsSaved))
 
-        await store.receive(.duplicatesChecked([duplicate.id])) {
-            $0.duplicateIDs = [duplicate.id]
+    }
+
+    func testDuplicateTermsWithinImportListAreSkipped() async throws {
+        let term1 = ParsedTerm(termText: "apple", translation: "яблуко")
+        let term2 = ParsedTerm(termText: "apple", translation: "яблуко")
+        let result = ImportResult(validTerms: [term1, term2], invalidLines: [])
+        var savedTerms: [Term] = []
+
+        let testUUID = UUID(uuidString: "00000000-0000-0000-0000-000000000000")!
+        let testDate = Date(timeIntervalSince1970: 1234567890)
+
+        let store = TestStore(
+            initialState: AddTermsFeature.State(inputText: "apple - яблуко\napple - яблуко")
+        ) {
+            AddTermsFeature()
+        } withDependencies: {
+            $0.importClient.parse = { _ in result }
+            $0.persistenceClient.termExists = { _, _ in false }
+            $0.persistenceClient.addTerms = { savedTerms.append(contentsOf: $0) }
+            $0.uuid = .constant(testUUID)
+            $0.date = .constant(testDate)
         }
 
-        await store.receive(.saveCompleted) { $0.isLoading = false }
+        await store.send(.parseButtonTapped) { $0.isLoading = true }
+        await store.receive(.parseCompleted(result, [term2.id])) {
+            $0.parsedTerms = [term1, term2]
+            $0.duplicateIDs = [term2.id]
+            $0.isLoading = false
+            $0.isParsed = true
+        }
 
+        await store.send(.saveButtonTapped) { $0.isLoading = true }
+        await store.receive(.saveCompleted) { $0.isLoading = false }
         await store.receive(.delegate(.termsSaved))
 
         XCTAssertEqual(savedTerms.count, 1)
-        XCTAssertEqual(savedTerms[0].termText, "banana")
-    }
-
-    // MARK: - findDuplicateIDs
-
-    func testFindDuplicateIDsCaseInsensitive() {
-        let parsed = ParsedTerm(termText: "Apple", translation: "Яблуко")
-        let existing = Term(
-            termText: "apple",
-            translation: "яблуко",
-            termLanguage: .english,
-            translationLanguage: .ukrainian
-        )
-
-        let ids = AddTermsFeature.findDuplicateIDs(among: [parsed], existing: [existing])
-        XCTAssertEqual(ids, [parsed.id])
-    }
-
-    func testFindDuplicateIDsNonMatchingTermsAreNotDuplicates() {
-        let parsed = ParsedTerm(termText: "cherry", translation: "вишня")
-        let existing = Term(
-            termText: "apple",
-            translation: "яблуко",
-            termLanguage: .english,
-            translationLanguage: .ukrainian
-        )
-
-        let ids = AddTermsFeature.findDuplicateIDs(among: [parsed], existing: [existing])
-        XCTAssertTrue(ids.isEmpty)
-    }
-
-    func testFindDuplicateIDsSameTermDifferentTranslationIsNotDuplicate() {
-        let parsed = ParsedTerm(termText: "bank", translation: "банк")
-        let existing = Term(
-            termText: "bank",
-            translation: "берег",
-            termLanguage: .english,
-            translationLanguage: .ukrainian
-        )
-
-        let ids = AddTermsFeature.findDuplicateIDs(among: [parsed], existing: [existing])
-        XCTAssertTrue(ids.isEmpty)
+        XCTAssertEqual(savedTerms[0].termText, "apple")
     }
 }

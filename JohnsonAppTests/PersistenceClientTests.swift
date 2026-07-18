@@ -72,6 +72,28 @@ final class PersistenceClientTests: XCTestCase {
         XCTAssertTrue(texts.contains("banana"))
     }
 
+    func testTermExists() async throws {
+        let term = Term(
+            termText: "Apple",
+            translation: "Яблуко",
+            termLanguage: .english,
+            translationLanguage: .ukrainian
+        )
+        try await client.addTerm(term)
+
+        let exists1 = try await client.termExists("Apple", "Яблуко")
+        XCTAssertTrue(exists1)
+
+        let exists2 = try await client.termExists("apple", "яблуко")
+        XCTAssertTrue(exists2)
+
+        let exists3 = try await client.termExists("  apple  ", "  яблуко  ")
+        XCTAssertTrue(exists3)
+
+        let exists4 = try await client.termExists("apple", "груша")
+        XCTAssertFalse(exists4)
+    }
+
     func testFetchTermById() async throws {
         let id = UUID()
         let term = Term(
