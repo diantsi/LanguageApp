@@ -85,6 +85,9 @@ struct DictionaryView: View {
             .sheet(item: $store.scope(state: \.addTerms, action: \.addTerms)) { addTermsStore in
                 AddTermsView(store: addTermsStore)
             }
+            .sheet(item: $store.scope(state: \.editTerm, action: \.editTerm)) { editStore in
+                EditTermView(store: editStore)
+            }
             .alert($store.scope(state: \.alert, action: \.alert))
         }
     }

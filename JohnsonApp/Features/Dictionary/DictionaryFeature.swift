@@ -40,6 +40,7 @@ struct DictionaryFeature {
         var isLoading: Bool = false
         var hasMore: Bool = true
         @Presents var addTerms: AddTermsFeature.State?
+        @Presents var editTerm: EditTermFeature.State?
         @Presents var alert: AlertState<Action.Alert>?
 
         init(
@@ -49,6 +50,7 @@ struct DictionaryFeature {
             isLoading: Bool = false,
             hasMore: Bool = true,
             addTerms: AddTermsFeature.State? = nil,
+            editTerm: EditTermFeature.State? = nil,
             alert: AlertState<Action.Alert>? = nil
         ) {
             self.terms = terms
@@ -57,6 +59,7 @@ struct DictionaryFeature {
             self.isLoading = isLoading
             self.hasMore = hasMore
             self.addTerms = addTerms
+            self.editTerm = editTerm
             self.alert = alert
         }
     }
@@ -72,6 +75,7 @@ struct DictionaryFeature {
         case addButtonTapped
         case termTapped(Term)
         case addTerms(PresentationAction<AddTermsFeature.Action>)
+        case editTerm(PresentationAction<EditTermFeature.Action>)
         case deleteButtonTapped(Term)
         case alert(PresentationAction<Alert>)
 
@@ -157,7 +161,22 @@ struct DictionaryFeature {
                 state.addTerms = AddTermsFeature.State()
                 return .none
 
-            case .termTapped:
+            case let .termTapped(term):
+                state.editTerm = EditTermFeature.State(term: term)
+                return .none
+
+            case .editTerm(.presented(.delegate(.termSaved))):
+                state.terms = []
+                state.hasMore = true
+                return .send(.fetchTerms)
+
+            case .editTerm(.presented(.delegate(.termDeleted))):
+                state.editTerm = nil
+                state.terms = []
+                state.hasMore = true
+                return .send(.fetchTerms)
+
+            case .editTerm:
                 return .none
 
             case .addTerms(.presented(.delegate(.termsSaved))):
@@ -202,6 +221,9 @@ struct DictionaryFeature {
         }
         .ifLet(\.$addTerms, action: \.addTerms) {
             AddTermsFeature()
+        }
+        .ifLet(\.$editTerm, action: \.editTerm) {
+            EditTermFeature()
         }
         .ifLet(\.$alert, action: \.alert)
     }
