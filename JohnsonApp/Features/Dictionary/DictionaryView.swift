@@ -8,7 +8,8 @@ import SwiftUI
 
 struct DictionaryView: View {
     @Bindable var store: StoreOf<DictionaryFeature>
-    
+    @FocusState private var isSearchFocused: Bool
+
     public var body: some View {
         NavigationStack {
             VStack(alignment: .leading, spacing: 20) {
@@ -22,7 +23,10 @@ struct DictionaryView: View {
                 }
                 .pickerStyle(.segmented)
                 .background(Color(.systemBackground))
-                
+                .onChange(of: store.statusFilter) {
+                    isSearchFocused = false
+                }
+
                 if store.isLoading && store.terms.isEmpty {
                     Spacer()
                     HStack {
@@ -38,7 +42,7 @@ struct DictionaryView: View {
                     Spacer()
                 } else {
                     ScrollView {
-                        LazyVStack (alignment: .leading, spacing: 20){
+                        LazyVStack(alignment: .leading, spacing: 20) {
                             ForEach(store.terms) { term in
                                 TermCardView(
                                     termText: term.termText,
@@ -49,10 +53,11 @@ struct DictionaryView: View {
                                     statusBadge(for: term.status)
                                 }
                                 .onTapGesture {
+                                    isSearchFocused = false
                                     store.send(.termTapped(term))
                                 }
                             }
-                            
+
                             if store.hasMore {
                                 HStack {
                                     Spacer()
@@ -66,12 +71,18 @@ struct DictionaryView: View {
                             }
                         }
                     }
+                    .scrollDismissesKeyboard(.immediately)
                 }
             }
             .padding(.horizontal, 20)
+            .contentShape(Rectangle())
+            .onTapGesture {
+                isSearchFocused = false
+            }
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button {
+                        isSearchFocused = false
                         store.send(.addButtonTapped)
                     } label: {
                         Image(systemName: "plus")
@@ -91,25 +102,37 @@ struct DictionaryView: View {
             .alert($store.scope(state: \.alert, action: \.alert))
         }
     }
-    
+
     private func searchBar() -> some View {
         HStack {
             Image(systemName: "magnifyingglass")
-            TextField("пошук термів", text: $store.searchQuery.sending(\.searchQueryChanged))
                 .foregroundStyle(.secondary)
+            TextField("пошук термів", text: $store.searchQuery.sending(\.searchQueryChanged))
+                .focused($isSearchFocused)
+
+            if !store.searchQuery.isEmpty {
+                Button {
+                    store.send(.searchQueryChanged(""))
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .foregroundStyle(.secondary)
+                }
+            }
         }
-        .padding(20)
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
         .frame(height: 50)
-        .cornerRadius(12)
+        .background(Color(.secondarySystemGroupedBackground))
+        .clipShape(RoundedRectangle(cornerRadius: 12))
         .overlay(
             RoundedRectangle(cornerRadius: 12)
-                .stroke(Color.gray, lineWidth: 1)
+                .stroke(isSearchFocused ? Color.accentColor : Color.gray.opacity(0.3), lineWidth: isSearchFocused ? 1.5 : 1)
         )
     }
-    
+
     private func statusBadge(for status: LearningStatus) -> some View {
         let (text, textColor, backgroundColor) = badgeProperties(for: status)
-        
+
         return Text(text)
             .font(.caption2)
             .fontWeight(.bold)
@@ -119,7 +142,7 @@ struct DictionaryView: View {
             .background(backgroundColor)
             .clipShape(Capsule())
     }
-    
+
     private func badgeProperties(for status: LearningStatus) -> (String, Color, Color) {
         switch status {
         case .new:
@@ -142,18 +165,18 @@ struct DictionaryView: View {
             )
         }
     }
-    
+
     private var emptyStateView: some View {
         VStack(spacing: 16) {
             Image(systemName: "character.book.closed")
                 .font(.system(size: 60))
                 .foregroundStyle(.secondary)
-            
+
             Text("Додайте слова, щоб розпочати вивчення та тренування.")
                 .font(.title2)
                 .foregroundStyle(.secondary)
                 .padding(.horizontal, 32)
-            
+
             Button {
                 store.send(.addButtonTapped)
             } label: {
