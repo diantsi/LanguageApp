@@ -4,31 +4,28 @@
 //
 
 import Foundation
-import SwiftData
 
+struct Term: Equatable, Identifiable, Sendable {
+    let id: UUID
+    let termText: String
+    let translation: String
+    let hint: String?
+    let termLanguage: Language
+    let translationLanguage: Language
+    let createdAt: Date
+    let updatedAt: Date
+    let status: LearningStatus
 
-@Model
-class Term {
-    var id: UUID
-    var termText: String
-    var translation: String
-    var hint: String?
-    var termLanguage: Language
-    var translationLanguage: Language
-    var createdAt: Date
-    var updatedAt: Date
-    @Relationship(deleteRule: .cascade)
-    var learningProgress: LearningProgress?
-    
-    init(
+    nonisolated init(
         id: UUID = UUID(),
         termText: String,
         translation: String,
         hint: String? = nil,
-        termLanguage: Language,
-        translationLanguage: Language,
+        termLanguage: Language = .english,
+        translationLanguage: Language = .ukrainian,
         createdAt: Date = Date(),
-        updatedAt: Date = Date()
+        updatedAt: Date = Date(),
+        status: LearningStatus = .new
     ) {
         self.id = id
         self.termText = termText
@@ -38,50 +35,35 @@ class Term {
         self.translationLanguage = translationLanguage
         self.createdAt = createdAt
         self.updatedAt = updatedAt
-        self.learningProgress = LearningProgress(dueDate: createdAt)
-    }
-    
-    var status: LearningStatus {
-        guard let progress = learningProgress else { return .new }
-        if progress.lastReviewDate == nil {
-            return .new
-        } else if progress.stability < 366 {
-            return .learning
-        } else {
-            return .mastered
-        }
+        self.status = status
     }
 }
 
-extension Term: Equatable {
-    static func == (lhs: Term, rhs: Term) -> Bool {
-        lhs.id == rhs.id &&
-        lhs.termText == rhs.termText &&
-        lhs.translation == rhs.translation &&
-        lhs.hint == rhs.hint &&
-        lhs.termLanguage == rhs.termLanguage &&
-        lhs.translationLanguage == rhs.translationLanguage &&
-        lhs.createdAt == rhs.createdAt &&
-        lhs.updatedAt == rhs.updatedAt
-    }
-
+extension Term {
     static var mockList: [Term] {
-        let term1 = Term(
-            termText: "apple",
-            translation: "яблуко",
-            hint: "не бренд",
-            termLanguage: .english,
-            translationLanguage: .ukrainian
-        )
-        
-        let term2 = Term(
-            termText: "cacao",
-            translation: "какао",
-            hint: "кококо",
-            termLanguage: .english,
-            translationLanguage: .ukrainian
-        )
-
-        return [term1, term2]
+        [
+            Term(
+                id: UUID(uuidString: "00000000-0000-0000-0000-000000000001")!,
+                termText: "apple",
+                translation: "яблуко",
+                hint: "не бренд",
+                termLanguage: .english,
+                translationLanguage: .ukrainian,
+                createdAt: Date(timeIntervalSince1970: 1_000_000),
+                updatedAt: Date(timeIntervalSince1970: 1_000_000),
+                status: .new
+            ),
+            Term(
+                id: UUID(uuidString: "00000000-0000-0000-0000-000000000002")!,
+                termText: "cacao",
+                translation: "какао",
+                hint: "кококо",
+                termLanguage: .english,
+                translationLanguage: .ukrainian,
+                createdAt: Date(timeIntervalSince1970: 1_000_001),
+                updatedAt: Date(timeIntervalSince1970: 1_000_001),
+                status: .new
+            ),
+        ]
     }
 }

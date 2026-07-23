@@ -15,6 +15,8 @@ struct EditTermFeature {
         let id: UUID
         let termLanguage: Language
         let translationLanguage: Language
+        let createdAt: Date
+        let status: LearningStatus
 
         var termText: String
         var translation: String
@@ -25,8 +27,8 @@ struct EditTermFeature {
         @Presents var alert: AlertState<Action.Alert>?
 
         var canSave: Bool {
-            !termText.trimmingCharacters(in: .whitespaces).isEmpty && 
-            !translation.trimmingCharacters(in: .whitespaces).isEmpty && 
+            !termText.trimmingCharacters(in: .whitespaces).isEmpty &&
+            !translation.trimmingCharacters(in: .whitespaces).isEmpty &&
             !isLoading
         }
 
@@ -34,6 +36,8 @@ struct EditTermFeature {
             self.id = term.id
             self.termLanguage = term.termLanguage
             self.translationLanguage = term.translationLanguage
+            self.createdAt = term.createdAt
+            self.status = term.status
             self.termText = term.termText
             self.translation = term.translation
             self.hint = term.hint ?? ""
@@ -93,23 +97,25 @@ struct EditTermFeature {
             case .saveButtonTapped:
                 guard state.canSave else { return .none }
                 state.isLoading = true
-                
-                let textToSave = state.termText.trimmingCharacters(in: .whitespaces)
-                let translationToSave = state.translation.trimmingCharacters(in: .whitespaces)
-                let hintToSave = state.hint.trimmingCharacters(in: .whitespaces)
-                
-                let updatedTerm = Term(
+
+                let term = Term(
                     id: state.id,
-                    termText: textToSave,
-                    translation: translationToSave,
-                    hint: hintToSave.isEmpty ? nil : hintToSave,
+                    termText: state.termText.trimmingCharacters(in: .whitespaces),
+                    translation: state.translation.trimmingCharacters(in: .whitespaces),
+                    hint: {
+                        let h = state.hint.trimmingCharacters(in: .whitespaces)
+                        return h.isEmpty ? nil : h
+                    }(),
                     termLanguage: state.termLanguage,
-                    translationLanguage: state.translationLanguage
+                    translationLanguage: state.translationLanguage,
+                    createdAt: state.createdAt,
+                    updatedAt: Date(),
+                    status: state.status
                 )
 
-                return .run { [updatedTerm] send in
+                return .run { [term] send in
                     do {
-                        try await persistenceClient.updateTerm(updatedTerm)
+                        try await persistenceClient.updateTerm(term)
                         await send(.saveCompleted)
                     } catch {
                         await send(.saveFailure(error.localizedDescription))

@@ -145,7 +145,8 @@ struct AddTermsFeature {
                                 termLanguage: termLanguage,
                                 translationLanguage: translationLanguage,
                                 createdAt: dateNow,
-                                updatedAt: dateNow
+                                updatedAt: dateNow,
+                                status: .new
                             )
                         }
                         try await persistenceClient.addTerms(terms)

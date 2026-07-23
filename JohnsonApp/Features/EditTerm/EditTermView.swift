@@ -85,11 +85,15 @@ struct EditTermView: View {
         store: Store(
             initialState: EditTermFeature.State(
                 term: Term(
+                    id: UUID(),
                     termText: "apple",
                     translation: "яблуко",
                     hint: "fruit",
                     termLanguage: .english,
-                    translationLanguage: .ukrainian
+                    translationLanguage: .ukrainian,
+                    createdAt: Date(),
+                    updatedAt: Date(),
+                    status: .new
                 )
             )
         ) {

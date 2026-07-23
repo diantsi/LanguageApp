@@ -98,13 +98,13 @@ final class AddTermsFeatureTests: XCTestCase {
     // MARK: - Save
 
     func testSaveButtonTappedSavesTermsAndNotifiesDelegate() async throws {
-        let term = ParsedTerm(termText: "apple", translation: "яблуко")
+        let parsed = ParsedTerm(termText: "apple", translation: "яблуко")
         var savedTerms: [Term] = []
         let testUUID = UUID(uuidString: "00000000-0000-0000-0000-000000000000")!
         let testDate = Date(timeIntervalSince1970: 1234567890)
 
         let store = TestStore(
-            initialState: AddTermsFeature.State(parsedTerms: [term], isParsed: true)
+            initialState: AddTermsFeature.State(parsedTerms: [parsed], isParsed: true)
         ) {
             AddTermsFeature()
         } withDependencies: {
@@ -125,6 +125,7 @@ final class AddTermsFeatureTests: XCTestCase {
         XCTAssertEqual(savedTerms[0].translation, "яблуко")
         XCTAssertEqual(savedTerms[0].createdAt, testDate)
         XCTAssertEqual(savedTerms[0].updatedAt, testDate)
+        XCTAssertEqual(savedTerms[0].status, .new)
     }
 
     func testSaveButtonTappedWithEmptyListDoesNothing() async throws {
@@ -141,10 +142,15 @@ final class AddTermsFeatureTests: XCTestCase {
 
     func testDuplicateTermsAreDetectedOnParse() async throws {
         let existing = Term(
+            id: UUID(),
             termText: "apple",
             translation: "яблуко",
+            hint: nil,
             termLanguage: .english,
-            translationLanguage: .ukrainian
+            translationLanguage: .ukrainian,
+            createdAt: Date(),
+            updatedAt: Date(),
+            status: .new
         )
         let parsed = ParsedTerm(termText: "apple", translation: "яблуко")
         let result = ImportResult(validTerms: [parsed], invalidLines: [])
@@ -182,10 +188,15 @@ final class AddTermsFeatureTests: XCTestCase {
 
     func testPartialDuplicatesDetectedOnParseAndOnlyNewSaves() async throws {
         let existing = Term(
+            id: UUID(),
             termText: "apple",
             translation: "яблуко",
+            hint: nil,
             termLanguage: .english,
-            translationLanguage: .ukrainian
+            translationLanguage: .ukrainian,
+            createdAt: Date(),
+            updatedAt: Date(),
+            status: .new
         )
         let duplicate = ParsedTerm(termText: "apple", translation: "яблуко")
         let newTerm = ParsedTerm(termText: "banana", translation: "банан")
@@ -221,7 +232,6 @@ final class AddTermsFeatureTests: XCTestCase {
         await store.send(.saveButtonTapped) { $0.isLoading = true }
         await store.receive(.saveCompleted) { $0.isLoading = false }
         await store.receive(.delegate(.termsSaved))
-
     }
 
     func testDuplicateTermsWithinImportListAreSkipped() async throws {

@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		9A7306D6300119510021134D /* ComposableArchitecture in Frameworks */ = {isa = PBXBuildFile; productRef = 9A7306D5300119510021134D /* ComposableArchitecture */; };
+		9A73089D300F9AC30021134D /* GRDB in Frameworks */ = {isa = PBXBuildFile; productRef = 9A73089C300F9AC30021134D /* GRDB */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -44,6 +45,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				9A7306D6300119510021134D /* ComposableArchitecture in Frameworks */,
+				9A73089D300F9AC30021134D /* GRDB in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -104,6 +106,7 @@
 			name = JohnsonApp;
 			packageProductDependencies = (
 				9A7306D5300119510021134D /* ComposableArchitecture */,
+				9A73089C300F9AC30021134D /* GRDB */,
 			);
 			productName = JohnsonApp;
 			productReference = 9A7306092FF45AF90021134D /* JohnsonApp.app */;
@@ -160,6 +163,7 @@
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				9A7306D4300119510021134D /* XCRemoteSwiftPackageReference "swift-composable-architecture" */,
+				9A73089B300F9AC30021134D /* XCRemoteSwiftPackageReference "GRDB" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 9A73060A2FF45AF90021134D /* Products */;
@@ -489,6 +493,14 @@
 				minimumVersion = 1.26.0;
 			};
 		};
+		9A73089B300F9AC30021134D /* XCRemoteSwiftPackageReference "GRDB" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/groue/GRDB.swift";
+			requirement = {
+				branch = master;
+				kind = branch;
+			};
+		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -496,6 +508,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 9A7306D4300119510021134D /* XCRemoteSwiftPackageReference "swift-composable-architecture" */;
 			productName = ComposableArchitecture;
+		};
+		9A73089C300F9AC30021134D /* GRDB */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 9A73089B300F9AC30021134D /* XCRemoteSwiftPackageReference "GRDB" */;
+			productName = GRDB;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

@@ -10,9 +10,31 @@ import XCTest
 @MainActor
 final class DictionaryFeatureTests: XCTestCase {
 
+    // MARK: - Helpers
+
+    private func makeTerm(
+        termText: String,
+        translation: String,
+        status: LearningStatus = .new
+    ) -> Term {
+        Term(
+            id: UUID(),
+            termText: termText,
+            translation: translation,
+            hint: nil,
+            termLanguage: .english,
+            translationLanguage: .ukrainian,
+            createdAt: Date(),
+            updatedAt: Date(),
+            status: status
+        )
+    }
+
+    // MARK: - Tests
+
     func testOnAppearFetchesTerms() async throws {
-        let term1 = Term(termText: "apple", translation: "яблуко", termLanguage: .english, translationLanguage: .ukrainian)
-        let term2 = Term(termText: "banana", translation: "банан", termLanguage: .english, translationLanguage: .ukrainian)
+        let term1 = makeTerm(termText: "apple", translation: "яблуко")
+        let term2 = makeTerm(termText: "banana", translation: "банан")
         let mockTerms = [term1, term2]
 
         let store = TestStore(initialState: DictionaryFeature.State()) {
@@ -36,7 +58,7 @@ final class DictionaryFeatureTests: XCTestCase {
     }
 
     func testSearchQueryChangedWithDebounce() async throws {
-        let term1 = Term(termText: "apple", translation: "яблуко", termLanguage: .english, translationLanguage: .ukrainian)
+        let term1 = makeTerm(termText: "apple", translation: "яблуко")
         let mockTerms = [term1]
 
         let clock = TestClock()
@@ -71,22 +93,14 @@ final class DictionaryFeatureTests: XCTestCase {
     }
 
     func testStatusFilterChangedFiltersTerms() async throws {
-        let term1 = Term(termText: "apple", translation: "яблуко", termLanguage: .english, translationLanguage: .ukrainian) // .new
-
-        let term2 = Term(termText: "cherry", translation: "вишня", termLanguage: .english, translationLanguage: .ukrainian) // .learning
-        term2.learningProgress?.lastReviewDate = Date()
-        term2.learningProgress?.stability = 10.0
-
-        let term3 = Term(termText: "date", translation: "фінік", termLanguage: .english, translationLanguage: .ukrainian) // .mastered
-        term3.learningProgress?.lastReviewDate = Date()
-        term3.learningProgress?.stability = 400.0
-
-        let allTerms = [term1, term2, term3]
+        let newTerm     = makeTerm(termText: "apple", translation: "яблуко", status: .new)
+        let learningTerm = makeTerm(termText: "cherry", translation: "вишня", status: .learning)
+        let masteredTerm = makeTerm(termText: "date", translation: "фінік", status: .mastered)
+        let allTerms = [newTerm, learningTerm, masteredTerm]
 
         let store = TestStore(initialState: DictionaryFeature.State()) {
             DictionaryFeature()
         } withDependencies: {
-            // Фільтрацію тепер робить mock-база
             $0.persistenceClient.fetchTerms = { _, status, _, _ in
                 guard let status else { return allTerms }
                 return allTerms.filter { $0.status == status }
@@ -94,9 +108,7 @@ final class DictionaryFeatureTests: XCTestCase {
         }
 
         // 1. Початкове завантаження (всі статуси)
-        await store.send(.onAppear) {
-            $0.isLoading = true
-        }
+        await store.send(.onAppear) { $0.isLoading = true }
         await store.receive(.fetchTerms)
         await store.receive(.fetchTermsSuccess(allTerms, isLoadMore: false)) {
             $0.isLoading = false
@@ -112,9 +124,9 @@ final class DictionaryFeatureTests: XCTestCase {
             $0.hasMore = true
         }
         await store.receive(.fetchTerms)
-        await store.receive(.fetchTermsSuccess([term1], isLoadMore: false)) {
+        await store.receive(.fetchTermsSuccess([newTerm], isLoadMore: false)) {
             $0.isLoading = false
-            $0.terms = [term1]
+            $0.terms = [newTerm]
             $0.hasMore = false
         }
 
@@ -126,38 +138,29 @@ final class DictionaryFeatureTests: XCTestCase {
             $0.hasMore = true
         }
         await store.receive(.fetchTerms)
-        await store.receive(.fetchTermsSuccess([term2], isLoadMore: false)) {
+        await store.receive(.fetchTermsSuccess([learningTerm], isLoadMore: false)) {
             $0.isLoading = false
-            $0.terms = [term2]
+            $0.terms = [learningTerm]
             $0.hasMore = false
         }
     }
 
     func testLoadMoreTermsPagination() async throws {
-        // Створюємо 40 термінів для заповнення першої сторінки
         let firstPage = (1...40).map { i in
-            Term(termText: "term\(i)", translation: "translation\(i)", termLanguage: .english, translationLanguage: .ukrainian)
+            makeTerm(termText: "term\(i)", translation: "translation\(i)")
         }
-        let secondPage = [
-            Term(termText: "term41", translation: "translation41", termLanguage: .english, translationLanguage: .ukrainian)
-        ]
+        let secondPage = [makeTerm(termText: "term41", translation: "translation41")]
 
         let store = TestStore(initialState: DictionaryFeature.State()) {
             DictionaryFeature()
         } withDependencies: {
-            $0.persistenceClient.fetchTerms = { _, _, limit, offset in
-                if offset == 0 {
-                    return firstPage
-                } else {
-                    return secondPage
-                }
+            $0.persistenceClient.fetchTerms = { _, _, _, offset in
+                offset == 0 ? firstPage : secondPage
             }
         }
 
         // Завантаження першої сторінки
-        await store.send(.onAppear) {
-            $0.isLoading = true
-        }
+        await store.send(.onAppear) { $0.isLoading = true }
         await store.receive(.fetchTerms)
         await store.receive(.fetchTermsSuccess(firstPage, isLoadMore: false)) {
             $0.isLoading = false
@@ -166,9 +169,7 @@ final class DictionaryFeatureTests: XCTestCase {
         }
 
         // Завантаження другої сторінки
-        await store.send(.loadMoreTerms) {
-            $0.isLoading = true
-        }
+        await store.send(.loadMoreTerms) { $0.isLoading = true }
         await store.receive(.fetchTermsSuccess(secondPage, isLoadMore: true)) {
             $0.isLoading = false
             $0.terms = firstPage + secondPage

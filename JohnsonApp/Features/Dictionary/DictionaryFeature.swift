@@ -161,8 +161,8 @@ struct DictionaryFeature {
                 state.addTerms = AddTermsFeature.State()
                 return .none
 
-            case let .termTapped(term):
-                state.editTerm = EditTermFeature.State(term: term)
+            case let .termTapped(dto):
+                state.editTerm = EditTermFeature.State(term: dto)
                 return .none
 
             case .editTerm(.presented(.delegate(.termSaved))):

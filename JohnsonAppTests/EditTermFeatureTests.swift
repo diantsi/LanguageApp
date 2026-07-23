@@ -2,7 +2,6 @@
 //  EditTermFeatureTests.swift
 //  JohnsonApp
 //
-//
 
 import ComposableArchitecture
 import ConcurrencyExtras
@@ -12,15 +11,31 @@ import XCTest
 @MainActor
 final class EditTermFeatureTests: XCTestCase {
 
-    func testInitialState() async throws {
-        let term = Term(
-            termText: "apple",
-            translation: "яблуко",
-            hint: "fruit",
+    // MARK: - Helpers
+
+    private func makeTerm(
+        termText: String = "apple",
+        translation: String = "яблуко",
+        hint: String? = nil
+    ) -> Term {
+        Term(
+            id: UUID(),
+            termText: termText,
+            translation: translation,
+            hint: hint,
             termLanguage: .english,
-            translationLanguage: .ukrainian
+            translationLanguage: .ukrainian,
+            createdAt: Date(timeIntervalSince1970: 1_000_000),
+            updatedAt: Date(timeIntervalSince1970: 1_000_000),
+            status: .new
         )
-        
+    }
+
+    // MARK: - Tests
+
+    func testInitialState() async throws {
+        let term = makeTerm(termText: "apple", translation: "яблуко", hint: "fruit")
+
         let store = TestStore(initialState: EditTermFeature.State(term: term)) {
             EditTermFeature()
         }
@@ -36,61 +51,29 @@ final class EditTermFeatureTests: XCTestCase {
     }
 
     func testTextChangedActions() async throws {
-        let term = Term(
-            termText: "apple",
-            translation: "яблуко",
-            hint: "fruit",
-            termLanguage: .english,
-            translationLanguage: .ukrainian
-        )
-        
-        let store = TestStore(initialState: EditTermFeature.State(term: term)) {
+        let store = TestStore(initialState: EditTermFeature.State(term: makeTerm())) {
             EditTermFeature()
         }
 
-        await store.send(.termTextChanged("banana")) {
-            $0.termText = "banana"
-        }
-        await store.send(.translationChanged("банан")) {
-            $0.translation = "банан"
-        }
-        await store.send(.hintChanged("another fruit")) {
-            $0.hint = "another fruit"
-        }
+        await store.send(.termTextChanged("banana")) { $0.termText = "banana" }
+        await store.send(.translationChanged("банан")) { $0.translation = "банан" }
+        await store.send(.hintChanged("another fruit")) { $0.hint = "another fruit" }
     }
 
     func testEditButtonTapped() async throws {
-        let term = Term(
-            termText: "apple",
-            translation: "яблуко",
-            termLanguage: .english,
-            translationLanguage: .ukrainian
-        )
-        
-        let store = TestStore(initialState: EditTermFeature.State(term: term)) {
+        let store = TestStore(initialState: EditTermFeature.State(term: makeTerm())) {
             EditTermFeature()
         }
 
-        await store.send(.editButtonTapped) {
-            $0.isEditing = true
-        }
+        await store.send(.editButtonTapped) { $0.isEditing = true }
     }
 
     func testCloseButtonDismisses() async throws {
-        let term = Term(
-            termText: "apple",
-            translation: "яблуко",
-            termLanguage: .english,
-            translationLanguage: .ukrainian
-        )
-        
         let isDismissed = LockIsolated(false)
-        let store = TestStore(initialState: EditTermFeature.State(term: term)) {
+        let store = TestStore(initialState: EditTermFeature.State(term: makeTerm())) {
             EditTermFeature()
         } withDependencies: {
-            $0.dismiss = DismissEffect {
-                isDismissed.setValue(true)
-            }
+            $0.dismiss = DismissEffect { isDismissed.setValue(true) }
         }
 
         await store.send(.closeButtonTapped)
@@ -98,126 +81,75 @@ final class EditTermFeatureTests: XCTestCase {
     }
 
     func testCanSaveLogic() async throws {
-        let term = Term(
-            termText: "apple",
-            translation: "яблуко",
-            termLanguage: .english,
-            translationLanguage: .ukrainian
-        )
-        
-        var state = EditTermFeature.State(term: term)
-        
-        // Initial values are not empty, canSave is true (we simplified so that canSave is true if fields are not empty)
+        var state = EditTermFeature.State(term: makeTerm())
+
         XCTAssertTrue(state.canSave)
-        
-        // Empty termText makes canSave false
+
         state.termText = ""
         XCTAssertFalse(state.canSave)
-        
-        // Empty translation makes canSave false
+
         state.termText = "apple"
         state.translation = ""
         XCTAssertFalse(state.canSave)
-        
-        // Non-empty makes it true again
+
         state.translation = "яблуко"
         XCTAssertTrue(state.canSave)
     }
 
     func testSaveSuccess() async throws {
-        let term = Term(
-            termText: "apple",
-            translation: "яблуко",
-            termLanguage: .english,
-            translationLanguage: .ukrainian
-        )
-        
+        let term = makeTerm()
         let savedTermText = LockIsolated<String?>(nil)
         let savedTranslation = LockIsolated<String?>(nil)
         let savedId = LockIsolated<UUID?>(nil)
-        
+
         let store = TestStore(initialState: EditTermFeature.State(term: term)) {
             EditTermFeature()
         } withDependencies: {
-            $0.persistenceClient.updateTerm = { term in
-                savedId.setValue(term.id)
-                savedTermText.setValue(term.termText)
-                savedTranslation.setValue(term.translation)
+            $0.persistenceClient.updateTerm = { saved in
+                savedId.setValue(saved.id)
+                savedTermText.setValue(saved.termText)
+                savedTranslation.setValue(saved.translation)
             }
         }
 
-        await store.send(.editButtonTapped) {
-            $0.isEditing = true
-        }
-        
-        await store.send(.termTextChanged("apple pie")) {
-            $0.termText = "apple pie"
-        }
-
-        await store.send(.saveButtonTapped) {
-            $0.isLoading = true
-        }
-
+        await store.send(.editButtonTapped) { $0.isEditing = true }
+        await store.send(.termTextChanged("apple pie")) { $0.termText = "apple pie" }
+        await store.send(.saveButtonTapped) { $0.isLoading = true }
         await store.receive(.saveCompleted) {
             $0.isLoading = false
             $0.isEditing = false
         }
-
         await store.receive(.delegate(.termSaved))
-        
+
         XCTAssertEqual(savedId.value, term.id)
         XCTAssertEqual(savedTermText.value, "apple pie")
         XCTAssertEqual(savedTranslation.value, "яблуко")
     }
 
     func testSaveFailure() async throws {
-        let term = Term(
-            termText: "apple",
-            translation: "яблуко",
-            termLanguage: .english,
-            translationLanguage: .ukrainian
-        )
-        
-        let store = TestStore(initialState: EditTermFeature.State(term: term)) {
+        struct SomeError: Error, LocalizedError {
+            var errorDescription: String? { "Failed to save" }
+        }
+
+        let store = TestStore(initialState: EditTermFeature.State(term: makeTerm())) {
             EditTermFeature()
         } withDependencies: {
-            struct SomeError: Error, LocalizedError {
-                var errorDescription: String? { "Failed to save" }
-            }
-            $0.persistenceClient.updateTerm = { _ in
-                throw SomeError()
-            }
+            $0.persistenceClient.updateTerm = { _ in throw SomeError() }
         }
 
-        await store.send(.editButtonTapped) {
-            $0.isEditing = true
-        }
-
-        await store.send(.saveButtonTapped) {
-            $0.isLoading = true
-        }
-
-        await store.receive(.saveFailure("Failed to save")) {
-            $0.isLoading = false
-        }
+        await store.send(.editButtonTapped) { $0.isEditing = true }
+        await store.send(.saveButtonTapped) { $0.isLoading = true }
+        await store.receive(.saveFailure("Failed to save")) { $0.isLoading = false }
     }
 
     func testDeleteFlow() async throws {
-        let term = Term(
-            termText: "apple",
-            translation: "яблуко",
-            termLanguage: .english,
-            translationLanguage: .ukrainian
-        )
-        
+        let term = makeTerm()
         let deletedIdReceived = LockIsolated<UUID?>(nil)
-        
+
         let store = TestStore(initialState: EditTermFeature.State(term: term)) {
             EditTermFeature()
         } withDependencies: {
-            $0.persistenceClient.deleteTerm = { id in
-                deletedIdReceived.setValue(id)
-            }
+            $0.persistenceClient.deleteTerm = { id in deletedIdReceived.setValue(id) }
         }
 
         await store.send(.deleteButtonTapped) {
@@ -241,7 +173,7 @@ final class EditTermFeatureTests: XCTestCase {
         }
 
         await store.receive(.delegate(.termDeleted))
-        
+
         XCTAssertEqual(deletedIdReceived.value, term.id)
     }
 }

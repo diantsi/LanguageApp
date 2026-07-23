@@ -4,20 +4,15 @@
 //
 
 import Foundation
-import SwiftData
 
-@Model
-class LearningProgress {
+struct LearningProgress: Equatable, Sendable {
     var stability: Double
     var difficulty: Double
     var dueDate: Date
     var lastReviewDate: Date?
     var repetitions: Int
     var lapses: Int
-    
-    @Relationship(inverse: \Term.learningProgress)
-    var term: Term?
-    
+
     init(
         stability: Double = 0.0,
         difficulty: Double = 0.0,
@@ -33,16 +28,9 @@ class LearningProgress {
         self.repetitions = repetitions
         self.lapses = lapses
     }
-}
 
-extension LearningProgress: Equatable {
-    static func == (lhs: LearningProgress, rhs: LearningProgress) -> Bool {
-        lhs.stability == rhs.stability &&
-        lhs.difficulty == rhs.difficulty &&
-        lhs.dueDate == rhs.dueDate &&
-        lhs.lastReviewDate == rhs.lastReviewDate &&
-        lhs.repetitions == rhs.repetitions &&
-        lhs.lapses == rhs.lapses
+    var status: LearningStatus {
+        guard lastReviewDate != nil else { return .new }
+        return stability < 366 ? .learning : .mastered
     }
 }
-
