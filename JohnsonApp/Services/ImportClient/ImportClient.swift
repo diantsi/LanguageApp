@@ -6,12 +6,9 @@
 import ComposableArchitecture
 import Foundation
 
-
-
 struct ImportClient {
     var parse: @Sendable (String) -> ImportResult
 }
-
 
 extension ImportClient: DependencyKey {
     static let liveValue = Self(
@@ -46,11 +43,19 @@ extension ImportClient: DependencyKey {
     /// Parses a single non-empty trimmed line into a ParsedTerm.
     /// Returns nil if the line does not match the required format.
     ///
+    /// Requires a dash separator surrounded by whitespace on both sides.
+    /// Supported dash variants:
+    ///   - Short hyphen (-)
+    ///   - En dash (–)
+    ///   - Em dash (—)
+    ///   - Other Unicode dashes (‒, ―, ﹣, －)
+    ///
     /// Supported formats:
     ///   term - translation
-    ///   term - translation (hint)
+    ///   term — translation (hint)
+    ///   term – translation
     private nonisolated static func parseLine(_ line: String) -> ParsedTerm? {
-        guard let separatorRange = line.range(of: " - ") else { return nil }
+        guard let separatorRange = findSeparatorRange(in: line) else { return nil }
 
         let termText = String(line[line.startIndex..<separatorRange.lowerBound])
             .trimmingCharacters(in: .whitespaces)
@@ -77,6 +82,11 @@ extension ImportClient: DependencyKey {
         guard !translation.isEmpty else { return nil }
 
         return ParsedTerm(termText: termText, translation: translation, hint: hint)
+    }
+
+    private nonisolated static func findSeparatorRange(in line: String) -> Range<String.Index>? {
+        let regex = #"\s+[-\u{2013}\u{2014}\u{2012}\u{2015}\u{FE63}\u{FF0D}]\s+"#
+        return line.range(of: regex, options: .regularExpression)
     }
 }
 

@@ -19,7 +19,7 @@ final class ImportClientTests: XCTestCase {
         super.tearDown()
     }
 
-    // MARK: - Valid lines
+    // MARK: - Valid lines (Dash with spaces around it)
 
     func testSimpleLine() {
         let result = client.parse("apple - яблуко")
@@ -57,6 +57,52 @@ final class ImportClientTests: XCTestCase {
         XCTAssertEqual(result.validTerms[0].hint, "про літак")
     }
 
+    // MARK: - Dash variations (En dash, Em dash, etc. WITH SPACES)
+
+    func testEmDashWithSpaces() {
+        let result = client.parse("apple — яблуко (фрукт)")
+
+        XCTAssertEqual(result.validTerms.count, 1)
+        XCTAssertEqual(result.validTerms[0].termText, "apple")
+        XCTAssertEqual(result.validTerms[0].translation, "яблуко")
+        XCTAssertEqual(result.validTerms[0].hint, "фрукт")
+    }
+
+    func testEnDashWithSpaces() {
+        let result = client.parse("banana – банан")
+
+        XCTAssertEqual(result.validTerms.count, 1)
+        XCTAssertEqual(result.validTerms[0].termText, "banana")
+        XCTAssertEqual(result.validTerms[0].translation, "банан")
+    }
+
+    func testHyphenWithCompoundWords() {
+        // "take-off" contains hyphen inside word without spaces; separator is " - "
+        let result = client.parse("take-off - злітати")
+
+        XCTAssertEqual(result.validTerms.count, 1)
+        XCTAssertEqual(result.validTerms[0].termText, "take-off")
+        XCTAssertEqual(result.validTerms[0].translation, "злітати")
+    }
+
+    // MARK: - Dashes WITHOUT spaces are invalid (not separators)
+
+    func testEmDashWithoutSpacesIsInvalid() {
+        let result = client.parse("cherry—вишня")
+
+        XCTAssertTrue(result.validTerms.isEmpty)
+        XCTAssertEqual(result.invalidLines.count, 1)
+        XCTAssertEqual(result.invalidLines[0].content, "cherry—вишня")
+    }
+
+    func testEnDashWithoutSpacesIsInvalid() {
+        let result = client.parse("plum–слива")
+
+        XCTAssertTrue(result.validTerms.isEmpty)
+        XCTAssertEqual(result.invalidLines.count, 1)
+        XCTAssertEqual(result.invalidLines[0].content, "plum–слива")
+    }
+
     // MARK: - Dash in translation
 
     func testDashInTranslation() {
@@ -71,7 +117,7 @@ final class ImportClientTests: XCTestCase {
     // MARK: - Whitespace handling
 
     func testLeadingTrailingSpacesAreTrimmed() {
-        let result = client.parse("  apple  -  яблуко  ")
+        let result = client.parse("  apple  —  яблуко  ")
 
         XCTAssertEqual(result.validTerms.count, 1)
         XCTAssertEqual(result.validTerms[0].termText, "apple")
@@ -82,7 +128,7 @@ final class ImportClientTests: XCTestCase {
         let text = """
         apple - яблуко
 
-        banana - банан
+        banana – банан
         """
         let result = client.parse(text)
 
@@ -91,7 +137,7 @@ final class ImportClientTests: XCTestCase {
     }
 
     func testWhitespaceOnlyLinesAreSkipped() {
-        let text = "apple - яблуко\n   \nbanana - банан"
+        let text = "apple — яблуко\n   \nbanana - банан"
         let result = client.parse(text)
 
         XCTAssertEqual(result.validTerms.count, 2)
@@ -122,9 +168,9 @@ final class ImportClientTests: XCTestCase {
         let text = """
         apple - яблуко
         invalid line
-        bank - банк (не берег)
+        bank — банк (не берег)
         no separator here
-        take off - злітати
+        take off – злітати
         """
         let result = client.parse(text)
 
@@ -136,7 +182,7 @@ final class ImportClientTests: XCTestCase {
 
     func testLineNumbersAreCorrectWithEmptyLines() {
         let text = """
-        apple - яблуко
+        apple — яблуко
 
         invalid line
         """
@@ -144,7 +190,6 @@ final class ImportClientTests: XCTestCase {
 
         XCTAssertEqual(result.validTerms.count, 1)
         XCTAssertEqual(result.invalidLines.count, 1)
-        // Empty line 2 is skipped, invalid is on line 3
         XCTAssertEqual(result.invalidLines[0].lineNumber, 3)
     }
 
@@ -158,14 +203,13 @@ final class ImportClientTests: XCTestCase {
     }
 
     func testHintWithSpacesInsideParens() {
-        let result = client.parse("run - бігти (про людину або тварину)")
+        let result = client.parse("run — бігти (про людину або тварину)")
 
         XCTAssertEqual(result.validTerms[0].hint, "про людину або тварину")
     }
 
     func testIncompleteHintParensArePartOfTranslation() {
-        // Opening paren without closing → not a hint, whole thing is translation
-        let result = client.parse("term - translation (no closing paren")
+        let result = client.parse("term – translation (no closing paren")
 
         XCTAssertEqual(result.validTerms.count, 1)
         XCTAssertEqual(result.validTerms[0].translation, "translation (no closing paren")
@@ -173,7 +217,6 @@ final class ImportClientTests: XCTestCase {
     }
 
     func testEmptyHintParensAreIgnored() {
-        // "()" at end — empty hint, treated as translation
         let result = client.parse("term - translation ()")
 
         XCTAssertEqual(result.validTerms.count, 1)
