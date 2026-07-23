@@ -142,13 +142,6 @@ struct AddTermsView: View {
                 label: "термінів",
                 color: .green
             )
-            if store.hasDuplicates {
-                statBadge(
-                    count: store.duplicateIDs.count,
-                    label: "дублікатів",
-                    color: .orange
-                )
-            }
             if !store.invalidLines.isEmpty {
                 statBadge(
                     count: store.invalidLines.count,
@@ -180,7 +173,7 @@ struct AddTermsView: View {
         HStack(spacing: 10) {
             Image(systemName: "doc.on.doc")
                 .foregroundStyle(.orange)
-            Text("Деякі терміни вже є у словнику і будуть пропущені.")
+            Text("Деякі терміни вже є у словнику і не будуть додані.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }
@@ -226,19 +219,7 @@ struct AddTermsView: View {
                     translation: term.translation,
                     hint: term.hint,
                     onDelete: { store.send(.removeTermTapped(term.id)) }
-                ) {
-                    if store.duplicateIDs.contains(term.id) {
-                        Label("ДУБЛІКАТ", systemImage: "doc.on.doc.fill")
-                            .font(.caption2)
-                            .fontWeight(.bold)
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 4)
-                            .foregroundStyle(.orange)
-                            .background(Color.orange.opacity(0.12))
-                            .clipShape(Capsule())
-                    }
-                }
-                .opacity(store.duplicateIDs.contains(term.id) ? 0.45 : 1)
+                )
             }
         }
     }

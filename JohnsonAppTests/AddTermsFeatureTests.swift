@@ -42,7 +42,7 @@ final class AddTermsFeatureTests: XCTestCase {
             $0.isLoading = true
         }
 
-        await store.receive(.parseCompleted(result, [])) {
+        await store.receive(.parseCompleted(validTerms: [parsed], invalidLines: [], hasDuplicates: false)) {
             $0.parsedTerms = [parsed]
             $0.isLoading = false
             $0.isParsed = true
@@ -70,7 +70,7 @@ final class AddTermsFeatureTests: XCTestCase {
         }
 
         await store.send(.parseButtonTapped) { $0.isLoading = true }
-        await store.receive(.parseCompleted(result, [])) {
+        await store.receive(.parseCompleted(validTerms: [valid], invalidLines: [invalid], hasDuplicates: false)) {
             $0.parsedTerms = [valid]
             $0.invalidLines = [invalid]
             $0.isLoading = false
@@ -138,9 +138,9 @@ final class AddTermsFeatureTests: XCTestCase {
         await store.send(.saveButtonTapped)
     }
 
-    // MARK: - Duplicate detection
+    // MARK: - Duplicate filtering on parse
 
-    func testDuplicateTermsAreDetectedOnParse() async throws {
+    func testDuplicateTermsAreFilteredOutOnParse() async throws {
         let existing = Term(
             id: UUID(),
             termText: "apple",
@@ -154,10 +154,6 @@ final class AddTermsFeatureTests: XCTestCase {
         )
         let parsed = ParsedTerm(termText: "apple", translation: "яблуко")
         let result = ImportResult(validTerms: [parsed], invalidLines: [])
-        var savedTerms: [Term] = []
-
-        let testUUID = UUID(uuidString: "00000000-0000-0000-0000-000000000000")!
-        let testDate = Date(timeIntervalSince1970: 1234567890)
 
         let store = TestStore(
             initialState: AddTermsFeature.State(inputText: "apple - яблуко")
@@ -169,24 +165,18 @@ final class AddTermsFeatureTests: XCTestCase {
                 termText.lowercased() == existing.termText.lowercased() &&
                 translation.lowercased() == existing.translation.lowercased()
             }
-            $0.persistenceClient.addTerms = { savedTerms.append(contentsOf: $0) }
-            $0.uuid = .constant(testUUID)
-            $0.date = .constant(testDate)
         }
 
         await store.send(.parseButtonTapped) { $0.isLoading = true }
-        await store.receive(.parseCompleted(result, [parsed.id])) {
-            $0.parsedTerms = [parsed]
-            $0.duplicateIDs = [parsed.id]
+        await store.receive(.parseCompleted(validTerms: [], invalidLines: [], hasDuplicates: true)) {
+            $0.parsedTerms = []
+            $0.hasDuplicates = true
             $0.isLoading = false
             $0.isParsed = true
         }
-
-        await store.send(.saveButtonTapped)
-        XCTAssertTrue(savedTerms.isEmpty)
     }
 
-    func testPartialDuplicatesDetectedOnParseAndOnlyNewSaves() async throws {
+    func testPartialDuplicatesAreFilteredOutAndOnlyNewRemain() async throws {
         let existing = Term(
             id: UUID(),
             termText: "apple",
@@ -222,9 +212,9 @@ final class AddTermsFeatureTests: XCTestCase {
         }
 
         await store.send(.parseButtonTapped) { $0.isLoading = true }
-        await store.receive(.parseCompleted(result, [duplicate.id])) {
-            $0.parsedTerms = [duplicate, newTerm]
-            $0.duplicateIDs = [duplicate.id]
+        await store.receive(.parseCompleted(validTerms: [newTerm], invalidLines: [], hasDuplicates: true)) {
+            $0.parsedTerms = [newTerm]
+            $0.hasDuplicates = true
             $0.isLoading = false
             $0.isParsed = true
         }
@@ -232,9 +222,12 @@ final class AddTermsFeatureTests: XCTestCase {
         await store.send(.saveButtonTapped) { $0.isLoading = true }
         await store.receive(.saveCompleted) { $0.isLoading = false }
         await store.receive(.delegate(.termsSaved))
+
+        XCTAssertEqual(savedTerms.count, 1)
+        XCTAssertEqual(savedTerms[0].termText, "banana")
     }
 
-    func testDuplicateTermsWithinImportListAreSkipped() async throws {
+    func testDuplicateTermsWithinImportListAreFilteredOut() async throws {
         let term1 = ParsedTerm(termText: "apple", translation: "яблуко")
         let term2 = ParsedTerm(termText: "apple", translation: "яблуко")
         let result = ImportResult(validTerms: [term1, term2], invalidLines: [])
@@ -256,9 +249,9 @@ final class AddTermsFeatureTests: XCTestCase {
         }
 
         await store.send(.parseButtonTapped) { $0.isLoading = true }
-        await store.receive(.parseCompleted(result, [term2.id])) {
-            $0.parsedTerms = [term1, term2]
-            $0.duplicateIDs = [term2.id]
+        await store.receive(.parseCompleted(validTerms: [term1], invalidLines: [], hasDuplicates: true)) {
+            $0.parsedTerms = [term1]
+            $0.hasDuplicates = true
             $0.isLoading = false
             $0.isParsed = true
         }

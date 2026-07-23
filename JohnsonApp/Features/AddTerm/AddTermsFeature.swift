@@ -14,7 +14,7 @@ struct AddTermsFeature {
         var inputText: String = ""
         var parsedTerms: [ParsedTerm] = []
         var invalidLines: [InvalidLine] = []
-        var duplicateIDs: Set<UUID> = []
+        var hasDuplicates: Bool = false
         var isLoading: Bool = false
         var isParsed: Bool = false
 
@@ -22,12 +22,12 @@ struct AddTermsFeature {
         var translationLanguage: Language = .ukrainian
 
         var canSave: Bool { isParsed && !parsedTerms.isEmpty && !isLoading }
-        var hasDuplicates: Bool { !duplicateIDs.isEmpty }
+
         init(
             inputText: String = "",
             parsedTerms: [ParsedTerm] = [],
             invalidLines: [InvalidLine] = [],
-            duplicateIDs: Set<UUID> = [],
+            hasDuplicates: Bool = false,
             isLoading: Bool = false,
             isParsed: Bool = false,
             termLanguage: Language = .english,
@@ -36,7 +36,7 @@ struct AddTermsFeature {
             self.inputText = inputText
             self.parsedTerms = parsedTerms
             self.invalidLines = invalidLines
-            self.duplicateIDs = duplicateIDs
+            self.hasDuplicates = hasDuplicates
             self.isLoading = isLoading
             self.isParsed = isParsed
             self.termLanguage = termLanguage
@@ -47,7 +47,7 @@ struct AddTermsFeature {
     enum Action: Equatable {
         case inputTextChanged(String)
         case parseButtonTapped
-        case parseCompleted(ImportResult, [UUID])
+        case parseCompleted(validTerms: [ParsedTerm], invalidLines: [InvalidLine], hasDuplicates: Bool)
         case removeTermTapped(UUID)
         case saveButtonTapped
         case saveCompleted
@@ -65,6 +65,7 @@ struct AddTermsFeature {
     @Dependency(\.dismiss) var dismiss
     @Dependency(\.uuid) var uuid
     @Dependency(\.date) var date
+
     var body: some Reducer<State, Action> {
         Reduce { state, action in
             switch action {
@@ -80,9 +81,10 @@ struct AddTermsFeature {
                 state.isLoading = true
                 return .run { [importClient, persistenceClient] send in
                     let result = importClient.parse(text)
-                    var duplicateIDs: [UUID] = []
+                    var uniqueTerms: [ParsedTerm] = []
                     var seenTerms = Set<String>()
-                    
+                    var foundDuplicates = false
+
                     for term in result.validTerms {
                         let normText = term.termText
                             .trimmingCharacters(in: .whitespaces)
@@ -93,42 +95,45 @@ struct AddTermsFeature {
                             .lowercased()
                             .replacingOccurrences(of: "\\s+", with: " ", options: .regularExpression)
                         let normalizedKey = "\(normText)||\(normTranslation)"
-                        
+
                         if seenTerms.contains(normalizedKey) {
-                            duplicateIDs.append(term.id)
+                            foundDuplicates = true
                         } else {
                             seenTerms.insert(normalizedKey)
                             do {
                                 let isDuplicate = try await persistenceClient.termExists(term.termText, term.translation)
                                 if isDuplicate {
-                                    duplicateIDs.append(term.id)
+                                    foundDuplicates = true
+                                } else {
+                                    uniqueTerms.append(term)
                                 }
-                            } catch {}
+                            } catch {
+                                uniqueTerms.append(term)
+                            }
                         }
                     }
-                    await send(.parseCompleted(result, duplicateIDs))
+                    await send(.parseCompleted(
+                        validTerms: uniqueTerms,
+                        invalidLines: result.invalidLines,
+                        hasDuplicates: foundDuplicates
+                    ))
                 }
-                
-            case let .parseCompleted(result, duplicateIDs):
-                state.parsedTerms = result.validTerms
-                state.invalidLines = result.invalidLines
-                state.duplicateIDs = Set(duplicateIDs)
+
+            case let .parseCompleted(validTerms, invalidLines, hasDuplicates):
+                state.parsedTerms = validTerms
+                state.invalidLines = invalidLines
+                state.hasDuplicates = hasDuplicates
                 state.isParsed = true
                 state.isLoading = false
                 return .none
-                
+
             case let .removeTermTapped(id):
                 state.parsedTerms.removeAll { $0.id == id }
-                state.duplicateIDs.remove(id)
                 return .none
-                
+
             case .saveButtonTapped:
                 guard !state.parsedTerms.isEmpty else { return .none }
-                let toSave = state.parsedTerms.filter { !state.duplicateIDs.contains($0.id) }
-                guard !toSave.isEmpty else {
-                    state.isLoading = false
-                    return .none
-                }
+                let toSave = state.parsedTerms
                 state.isLoading = true
                 let termLanguage = state.termLanguage
                 let translationLanguage = state.translationLanguage
@@ -155,15 +160,15 @@ struct AddTermsFeature {
                         await send(.saveFailure(error.localizedDescription))
                     }
                 }
-                
+
             case .saveCompleted:
                 state.isLoading = false
                 return .send(.delegate(.termsSaved))
-                
+
             case .saveFailure:
                 state.isLoading = false
                 return .none
-                
+
             case .cancelButtonTapped:
                 return .run { _ in await dismiss() }
 
