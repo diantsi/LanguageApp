@@ -85,22 +85,22 @@ final class ImportClientTests: XCTestCase {
         XCTAssertEqual(result.validTerms[0].translation, "злітати")
     }
 
-    // MARK: - Dashes WITHOUT spaces are invalid (not separators)
-
-    func testEmDashWithoutSpacesIsInvalid() {
+    func testEmDashWithoutSpacesIsValid() {
         let result = client.parse("cherry—вишня")
 
-        XCTAssertTrue(result.validTerms.isEmpty)
-        XCTAssertEqual(result.invalidLines.count, 1)
-        XCTAssertEqual(result.invalidLines[0].content, "cherry—вишня")
+        XCTAssertEqual(result.validTerms.count, 1)
+        XCTAssertEqual(result.validTerms[0].termText, "cherry")
+        XCTAssertEqual(result.validTerms[0].translation, "вишня")
+        XCTAssertTrue(result.invalidLines.isEmpty)
     }
 
-    func testEnDashWithoutSpacesIsInvalid() {
+    func testEnDashWithoutSpacesIsValid() {
         let result = client.parse("plum–слива")
 
-        XCTAssertTrue(result.validTerms.isEmpty)
-        XCTAssertEqual(result.invalidLines.count, 1)
-        XCTAssertEqual(result.invalidLines[0].content, "plum–слива")
+        XCTAssertEqual(result.validTerms.count, 1)
+        XCTAssertEqual(result.validTerms[0].termText, "plum")
+        XCTAssertEqual(result.validTerms[0].translation, "слива")
+        XCTAssertTrue(result.invalidLines.isEmpty)
     }
 
     // MARK: - Dash in translation

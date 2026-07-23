@@ -85,8 +85,15 @@ extension ImportClient: DependencyKey {
     }
 
     private nonisolated static func findSeparatorRange(in line: String) -> Range<String.Index>? {
-        let regex = #"\s+[-\u{2013}\u{2014}\u{2012}\u{2015}\u{FE63}\u{FF0D}]\s+"#
-        return line.range(of: regex, options: .regularExpression)
+        // 1. Hyphen (-) requires spaces around it (prevents splitting compound words like "take-off"): " - "
+        let hyphenRegex = #"\s+-\s+"#
+        if let range = line.range(of: hyphenRegex, options: .regularExpression) {
+            return range
+        }
+
+        // 2. Em-dash (—), En-dash (–) and other Unicode dashes work with or without spaces around them: "apple — яблуко", "apple—яблуко"
+        let unicodeDashRegex = #"\s*[\u{2013}\u{2014}\u{2012}\u{2015}\u{FE63}\u{FF0D}]\s*"#
+        return line.range(of: unicodeDashRegex, options: .regularExpression)
     }
 }
 

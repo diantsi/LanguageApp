@@ -93,6 +93,8 @@ struct AddTermsView: View {
                     .scrollContentBackground(.hidden)
                     .background(Color(.secondarySystemGroupedBackground))
                     .clipShape(RoundedRectangle(cornerRadius: 12))
+                    .autocorrectionDisabled()
+                    .textInputAutocapitalization(.never)
                     .focused($isEditorFocused)
 
                 if store.inputText.isEmpty {
