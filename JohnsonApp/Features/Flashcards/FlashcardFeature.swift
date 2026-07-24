@@ -1,0 +1,193 @@
+//
+//  FlashcardFeature.swift
+//  JohnsonApp
+//
+
+import ComposableArchitecture
+import Foundation
+
+@Reducer
+struct FlashcardFeature {
+
+    enum FirstSide: Equatable, CaseIterable {
+        case term
+        case translation
+
+        var title: String {
+            switch self {
+            case .term: return "Термін"
+            case .translation: return "Переклад"
+            }
+        }
+    }
+
+    enum VisibleSide: Equatable {
+        case term
+        case translation
+    }
+
+    struct CardFace: Equatable {
+        let text: String
+        let hint: String?
+        let label: String
+    }
+
+    struct CardSides: Equatable {
+        let front: CardFace
+        let back: CardFace
+    }
+
+    @ObservableState
+    struct State: Equatable {
+        var cards: [Term] = []
+        var currentIndex: Int = 0
+        var isFlipped: Bool = false
+        var firstSide: FirstSide = .term
+        var isLoading: Bool = false
+
+        init(
+            cards: [Term] = [],
+            currentIndex: Int = 0,
+            isFlipped: Bool = false,
+            firstSide: FirstSide = .term,
+            isLoading: Bool = false
+        ) {
+            self.cards = cards
+            self.currentIndex = currentIndex
+            self.isFlipped = isFlipped
+            self.firstSide = firstSide
+            self.isLoading = isLoading
+        }
+
+        var currentCard: Term? {
+            guard !cards.isEmpty, cards.indices.contains(currentIndex) else { return nil }
+            return cards[currentIndex]
+        }
+
+        var currentCardSides: CardSides? {
+            guard let card = currentCard else { return nil }
+            switch firstSide {
+            case .term:
+                return CardSides(
+                    front: CardFace(text: card.termText, hint: nil, label: "термін"),
+                    back: CardFace(text: card.translation, hint: card.hint, label: "переклад")
+                )
+            case .translation:
+                return CardSides(
+                    front: CardFace(text: card.translation, hint: card.hint, label: "переклад"),
+                    back: CardFace(text: card.termText, hint: nil, label: "термін")
+                )
+            }
+        }
+
+        var counter: String {
+            guard !cards.isEmpty else { return "" }
+            return "\(currentIndex + 1) / \(cards.count)"
+        }
+
+        var isEmpty: Bool {
+            !isLoading && cards.isEmpty
+        }
+
+        var canGoNext: Bool {
+            currentIndex < cards.count - 1
+        }
+
+        var canGoPrevious: Bool {
+            currentIndex > 0
+        }
+
+        var visibleSide: VisibleSide {
+            switch (firstSide, isFlipped) {
+            case (.term, false): return .term
+            case (.term, true): return .translation
+            case (.translation, false): return .translation
+            case (.translation, true): return .term
+            }
+        }
+    }
+
+    enum Action: Equatable {
+        case onAppear
+        case fetchTermsSuccess([Term])
+        case fetchTermsFailure
+        case flipCard
+        case nextCard
+        case previousCard
+        case restartSession
+        case firstSideChanged(FirstSide)
+        case goToDictionaryTapped
+        case delegate(Delegate)
+
+        @CasePathable
+        enum Delegate: Equatable {
+            case goToDictionary
+        }
+    }
+
+
+    @Dependency(\.persistenceClient) var persistenceClient
+
+    var body: some Reducer<State, Action> {
+        Reduce { state, action in
+            switch action {
+
+            case .onAppear:
+                state.isLoading = true
+                state.isFlipped = false
+                return .run { send in
+                    do {
+                        let terms = try await persistenceClient.fetchTerms(nil, nil, nil, nil)
+                        await send(.fetchTermsSuccess(terms))
+                    } catch {
+                        await send(.fetchTermsFailure)
+                    }
+                }
+
+            case let .fetchTermsSuccess(terms):
+                state.isLoading = false
+                state.cards = terms.shuffled()
+                state.currentIndex = 0
+                state.isFlipped = false
+                return .none
+
+            case .fetchTermsFailure:
+                state.isLoading = false
+                return .none
+
+            case .flipCard:
+                state.isFlipped.toggle()
+                return .none
+
+            case .nextCard:
+                guard state.canGoNext else { return .none }
+                state.currentIndex += 1
+                state.isFlipped = false
+                return .none
+
+            case .previousCard:
+                guard state.canGoPrevious else { return .none }
+                state.currentIndex -= 1
+                state.isFlipped = false
+                return .none
+
+            case .restartSession:
+                state.cards = state.cards.shuffled()
+                state.currentIndex = 0
+                state.isFlipped = false
+                return .none
+
+            case let .firstSideChanged(side):
+                state.firstSide = side
+                state.isFlipped = false
+                return .none
+
+            case .goToDictionaryTapped:
+                return .send(.delegate(.goToDictionary))
+
+            case .delegate:
+                return .none
+            }
+        }
+    }
+}

@@ -22,10 +22,7 @@ struct AppView: View {
             }
             .tag(AppFeature.Tab.dictionary)
             
-            NavigationStack {
-                Text("Flashcards Placeholder")
-                    .navigationTitle("Flashcards")
-            }
+            FlashcardView(store: store.scope(state: \.flashcard, action: \.flashcard))
             .tabItem {
                 Label("Flashcards", systemImage: "rectangle.portrait.on.rectangle.portrait.angled")
             }
