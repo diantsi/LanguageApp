@@ -50,6 +50,12 @@ struct FlashcardView: View {
                 .padding(.top, 12)
 
             Spacer()
+            
+            Button {
+                store.send(.voiceButtonTapped)
+            } label: {
+                Image( systemName: "speaker.wave.1.fill")
+            }
 
             if let sides = store.currentCardSides {
                 CardView(

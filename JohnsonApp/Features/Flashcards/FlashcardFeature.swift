@@ -60,7 +60,9 @@ struct FlashcardFeature {
         }
 
         var currentCard: Term? {
-            guard !cards.isEmpty, cards.indices.contains(currentIndex) else { return nil }
+            guard !cards.isEmpty, cards.indices.contains(currentIndex) else {
+                return nil
+            }
             return cards[currentIndex]
         }
 
@@ -69,13 +71,29 @@ struct FlashcardFeature {
             switch firstSide {
             case .term:
                 return CardSides(
-                    front: CardFace(text: card.termText, hint: nil, label: "термін"),
-                    back: CardFace(text: card.translation, hint: card.hint, label: "переклад")
+                    front: CardFace(
+                        text: card.termText,
+                        hint: nil,
+                        label: "термін"
+                    ),
+                    back: CardFace(
+                        text: card.translation,
+                        hint: card.hint,
+                        label: "переклад"
+                    )
                 )
             case .translation:
                 return CardSides(
-                    front: CardFace(text: card.translation, hint: card.hint, label: "переклад"),
-                    back: CardFace(text: card.termText, hint: nil, label: "термін")
+                    front: CardFace(
+                        text: card.translation,
+                        hint: card.hint,
+                        label: "переклад"
+                    ),
+                    back: CardFace(
+                        text: card.termText,
+                        hint: nil,
+                        label: "термін"
+                    )
                 )
             }
         }
@@ -116,6 +134,7 @@ struct FlashcardFeature {
         case previousCard
         case restartSession
         case firstSideChanged(FirstSide)
+        case voiceButtonTapped
         case goToDictionaryTapped
         case delegate(Delegate)
 
@@ -125,8 +144,8 @@ struct FlashcardFeature {
         }
     }
 
-
     @Dependency(\.persistenceClient) var persistenceClient
+    @Dependency(\.speechClient) var speechClient
 
     var body: some Reducer<State, Action> {
         Reduce { state, action in
@@ -135,7 +154,8 @@ struct FlashcardFeature {
             case .onAppear:
                 state.isLoading = true
                 state.isFlipped = false
-                return .run { send in
+                return .run { [speechClient] send in
+                    await speechClient.stop()
                     do {
                         let terms = try await persistenceClient.fetchTerms(nil, nil, nil, nil)
                         await send(.fetchTermsSuccess(terms))
@@ -144,7 +164,7 @@ struct FlashcardFeature {
                     }
                 }
 
-            case let .fetchTermsSuccess(terms):
+            case .fetchTermsSuccess(let terms):
                 state.isLoading = false
                 state.cards = terms.shuffled()
                 state.currentIndex = 0
@@ -163,24 +183,40 @@ struct FlashcardFeature {
                 guard state.canGoNext else { return .none }
                 state.currentIndex += 1
                 state.isFlipped = false
-                return .none
+                return .run { [speechClient] _ in await speechClient.stop() }
 
             case .previousCard:
                 guard state.canGoPrevious else { return .none }
                 state.currentIndex -= 1
                 state.isFlipped = false
-                return .none
+                return .run { [speechClient] _ in await speechClient.stop() }
 
             case .restartSession:
                 state.cards = state.cards.shuffled()
                 state.currentIndex = 0
                 state.isFlipped = false
-                return .none
+                return .run { [speechClient] _ in await speechClient.stop() }
 
-            case let .firstSideChanged(side):
+            case .firstSideChanged(let side):
                 state.firstSide = side
                 state.isFlipped = false
                 return .none
+
+            case .voiceButtonTapped:
+                guard let card = state.currentCard else { return .none }
+                let text: String
+                let language: Language
+                switch state.visibleSide {
+                case .term:
+                    text = card.termText
+                    language = card.termLanguage
+                case .translation:
+                    text = card.translation
+                    language = card.translationLanguage
+                }
+                return .run { [speechClient, text, language] _ in
+                    await speechClient.speak(text, language)
+                }
 
             case .goToDictionaryTapped:
                 return .send(.delegate(.goToDictionary))

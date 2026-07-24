@@ -354,4 +354,182 @@ struct FlashcardFeatureTests {
         #expect(state.canGoPrevious)
         #expect(!state.canGoNext)
     }
+
+    // MARK: - Pronunciation
+
+    @Test
+    func testVoiceButtonTappedSpeaksTermWhenTermSideVisible() async {
+        var spokenText: String?
+        var spokenLanguage: Language?
+
+        let store = TestStore(
+            initialState: FlashcardFeature.State(
+                cards: Self.mockTerms,
+                currentIndex: 0,
+                isFlipped: false,
+                firstSide: .term
+            )
+        ) {
+            FlashcardFeature()
+        } withDependencies: {
+            $0.speechClient.speak = { text, language in
+                spokenText = text
+                spokenLanguage = language
+            }
+            $0.speechClient.stop = {}
+        }
+
+        await store.send(.voiceButtonTapped)
+
+        #expect(spokenText == "apple")
+        #expect(spokenLanguage == .english)
+    }
+
+    @Test
+    func testVoiceButtonTappedSpeaksTranslationWhenTranslationSideVisible() async {
+        var spokenText: String?
+        var spokenLanguage: Language?
+
+        let store = TestStore(
+            initialState: FlashcardFeature.State(
+                cards: Self.mockTerms,
+                currentIndex: 0,
+                isFlipped: false,
+                firstSide: .translation
+            )
+        ) {
+            FlashcardFeature()
+        } withDependencies: {
+            $0.speechClient.speak = { text, language in
+                spokenText = text
+                spokenLanguage = language
+            }
+            $0.speechClient.stop = {}
+        }
+
+        await store.send(.voiceButtonTapped)
+
+        #expect(spokenText == "яблуко")
+        #expect(spokenLanguage == .ukrainian)
+    }
+
+    @Test
+    func testVoiceButtonTappedSpeaksTranslationAfterFlip() async {
+        var spokenText: String?
+        var spokenLanguage: Language?
+
+        let store = TestStore(
+            initialState: FlashcardFeature.State(
+                cards: Self.mockTerms,
+                currentIndex: 0,
+                isFlipped: true,
+                firstSide: .term
+            )
+        ) {
+            FlashcardFeature()
+        } withDependencies: {
+            $0.speechClient.speak = { text, language in
+                spokenText = text
+                spokenLanguage = language
+            }
+            $0.speechClient.stop = {}
+        }
+
+        await store.send(.voiceButtonTapped)
+
+        #expect(spokenText == "яблуко")
+        #expect(spokenLanguage == .ukrainian)
+    }
+
+    @Test
+    func testVoiceButtonTappedDoesNothingWhenNoCard() async {
+        var speakCalled = false
+
+        let store = TestStore(
+            initialState: FlashcardFeature.State(cards: [])
+        ) {
+            FlashcardFeature()
+        } withDependencies: {
+            $0.speechClient.speak = { _, _ in speakCalled = true }
+            $0.speechClient.stop = {}
+        }
+
+        await store.send(.voiceButtonTapped)
+
+        #expect(!speakCalled)
+    }
+
+    @Test
+    func testNextCardStopsSpeech() async {
+        var stopCalled = false
+
+        let store = TestStore(
+            initialState: FlashcardFeature.State(
+                cards: Self.mockTerms,
+                currentIndex: 0
+            )
+        ) {
+            FlashcardFeature()
+        } withDependencies: {
+            $0.speechClient.stop = { stopCalled = true }
+            $0.speechClient.speak = { _, _ in }
+        }
+
+        await store.send(.nextCard) {
+            $0.currentIndex = 1
+            $0.isFlipped = false
+        }
+
+        #expect(stopCalled)
+    }
+
+    @Test
+    func testPreviousCardStopsSpeech() async {
+        var stopCalled = false
+
+        let store = TestStore(
+            initialState: FlashcardFeature.State(
+                cards: Self.mockTerms,
+                currentIndex: 1
+            )
+        ) {
+            FlashcardFeature()
+        } withDependencies: {
+            $0.speechClient.stop = { stopCalled = true }
+            $0.speechClient.speak = { _, _ in }
+        }
+
+        await store.send(.previousCard) {
+            $0.currentIndex = 0
+            $0.isFlipped = false
+        }
+
+        #expect(stopCalled)
+    }
+
+    @Test
+    func testRestartSessionStopsSpeech() async {
+        var stopCalled = false
+
+        let store = TestStore(
+            initialState: FlashcardFeature.State(
+                cards: Self.mockTerms,
+                currentIndex: 2,
+                isFlipped: true
+            )
+        ) {
+            FlashcardFeature()
+        } withDependencies: {
+            $0.speechClient.stop = { stopCalled = true }
+            $0.speechClient.speak = { _, _ in }
+        }
+        store.exhaustivity = .off
+
+        await store.send(.restartSession) {
+            $0.currentIndex = 0
+            $0.isFlipped = false
+        }
+
+        #expect(stopCalled)
+    }
 }
