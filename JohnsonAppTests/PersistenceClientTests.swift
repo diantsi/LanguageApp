@@ -208,4 +208,34 @@ final class PersistenceClientTests: XCTestCase {
         let fetched = try await client.fetchTerms(nil, nil, nil, nil)
         XCTAssertEqual(fetched.first?.status, .new)
     }
+
+    func testFetchAndUpdateLearningProgress() async throws {
+        let id = UUID()
+        let term = makeTerm(id: id, termText: "test", translation: "тест")
+        try await client.addTerm(term)
+
+        var progress = try await client.fetchLearningProgress(id)
+        XCTAssertNotNil(progress)
+        XCTAssertNil(progress?.lastReviewDate)
+        XCTAssertEqual(progress?.stability, 0.0)
+
+        let now = Date()
+        let updatedProgress = LearningProgress(
+            stability: 10.5,
+            difficulty: 4.2,
+            dueDate: now,
+            lastReviewDate: now,
+            repetitions: 3,
+            lapses: 1
+        )
+        try await client.updateLearningProgress(id, updatedProgress)
+
+        progress = try await client.fetchLearningProgress(id)
+        XCTAssertNotNil(progress)
+        XCTAssertEqual(progress?.stability, 10.5)
+        XCTAssertEqual(progress?.difficulty, 4.2)
+        XCTAssertEqual(progress?.repetitions, 3)
+        XCTAssertEqual(progress?.lapses, 1)
+        XCTAssertNotNil(progress?.lastReviewDate)
+    }
 }

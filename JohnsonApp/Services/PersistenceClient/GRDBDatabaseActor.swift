@@ -57,6 +57,27 @@ actor GRDBDatabaseActor {
             self.repetitions = 0
             self.lapses = 0
         }
+
+        init(termId: UUID, progress: LearningProgress) {
+            self.termId = termId.uuidString
+            self.stability = progress.stability
+            self.difficulty = progress.difficulty
+            self.dueDate = progress.dueDate.timeIntervalSince1970
+            self.lastReviewDate = progress.lastReviewDate?.timeIntervalSince1970
+            self.repetitions = progress.repetitions
+            self.lapses = progress.lapses
+        }
+
+        func toLearningProgress() -> LearningProgress {
+            LearningProgress(
+                stability: stability,
+                difficulty: difficulty,
+                dueDate: Date(timeIntervalSince1970: dueDate),
+                lastReviewDate: lastReviewDate.map { Date(timeIntervalSince1970: $0) },
+                repetitions: repetitions,
+                lapses: lapses
+            )
+        }
     }
 
     private struct TermWithStatusRow: FetchableRecord, Sendable {
@@ -242,6 +263,20 @@ actor GRDBDatabaseActor {
                 arguments: [termText, translation]
             )
             return row != nil
+        }
+    }
+
+    func fetchLearningProgress(termId: UUID) throws -> LearningProgress? {
+        try pool.read { db in
+            let row = try LearningProgressRow.fetchOne(db, key: termId.uuidString)
+            return row?.toLearningProgress()
+        }
+    }
+
+    func updateLearningProgress(termId: UUID, progress: LearningProgress) throws {
+        try pool.write { db in
+            let row = LearningProgressRow(termId: termId, progress: progress)
+            try row.save(db)
         }
     }
 }

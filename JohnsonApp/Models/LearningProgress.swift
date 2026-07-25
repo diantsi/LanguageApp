@@ -13,7 +13,7 @@ struct LearningProgress: Equatable, Sendable {
     var repetitions: Int
     var lapses: Int
 
-    init(
+    nonisolated init(
         stability: Double = 0.0,
         difficulty: Double = 0.0,
         dueDate: Date,
