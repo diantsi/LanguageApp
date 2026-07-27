@@ -31,6 +31,8 @@ struct LearningSessionFeature {
         var selectedOption: String? = nil
         var isAnswerSubmitted: Bool = false
         var isCurrentAnswerCorrect: Bool = false
+        var validationResult: ValidationResult? = nil
+        var isOverridden: Bool = false
         var termTracks: [UUID: TermProgressTrack] = [:]
         var errorMessage: String? = nil
 
@@ -41,6 +43,8 @@ struct LearningSessionFeature {
             selectedOption: String? = nil,
             isAnswerSubmitted: Bool = false,
             isCurrentAnswerCorrect: Bool = false,
+            validationResult: ValidationResult? = nil,
+            isOverridden: Bool = false,
             termTracks: [UUID: TermProgressTrack] = [:],
             errorMessage: String? = nil
         ) {
@@ -50,6 +54,8 @@ struct LearningSessionFeature {
             self.selectedOption = selectedOption
             self.isAnswerSubmitted = isAnswerSubmitted
             self.isCurrentAnswerCorrect = isCurrentAnswerCorrect
+            self.validationResult = validationResult
+            self.isOverridden = isOverridden
             self.termTracks = termTracks
             self.errorMessage = errorMessage
         }
@@ -152,6 +158,8 @@ struct LearningSessionFeature {
         case selectOption(String)
         case setUserAnswer(String)
         case submitAnswer
+        case markAsCorrect
+        case markAsIncorrect
         case nextExercise
         case playListeningAudio
         case updateProgressSuccess
@@ -193,9 +201,13 @@ struct LearningSessionFeature {
                     answerToValidate = state.userAnswer
                 }
 
-                let isCorrect = AnswerValidator.validate(userAnswer: answerToValidate, targetAnswer: current.targetAnswer)
+                let result = AnswerValidator.validateResult(userAnswer: answerToValidate, targetAnswer: current.targetAnswer)
+                state.validationResult = result
+
+                let isCorrect = result == .correct
                 state.isCurrentAnswerCorrect = isCorrect
                 state.isAnswerSubmitted = true
+                state.isOverridden = false
 
                 let termId = current.term.id
                 var track = state.termTracks[termId] ?? TermProgressTrack()
@@ -224,6 +236,64 @@ struct LearningSessionFeature {
 
                 return .none
 
+            case .markAsCorrect:
+                guard state.isAnswerSubmitted, !state.isCurrentAnswerCorrect, let current = state.currentExercise else { return .none }
+
+                state.isCurrentAnswerCorrect = true
+                state.isOverridden = true
+
+                let termId = current.term.id
+                var track = state.termTracks[termId] ?? TermProgressTrack()
+                track.correctCount += 1
+                state.termTracks[termId] = track
+
+                if track.completedExercises == track.totalExercises {
+                    let rating = Rating.calculate(correctCount: track.correctCount, totalExercises: track.totalExercises)
+                    state.termTracks[termId]?.finalRating = rating
+
+                    let currentDate = now
+                    return .run { [persistenceClient, fsrsClient] send in
+                        do {
+                            let currentProgress = try await persistenceClient.fetchLearningProgress(termId) ?? LearningProgress(dueDate: currentDate)
+                            let updatedProgress = fsrsClient.schedule(currentProgress, rating, currentDate)
+                            try await persistenceClient.updateLearningProgress(termId, updatedProgress)
+                            await send(.updateProgressSuccess)
+                        } catch {
+                            await send(.updateProgressFailure(error.localizedDescription))
+                        }
+                    }
+                }
+                return .none
+
+            case .markAsIncorrect:
+                guard state.isAnswerSubmitted, state.isCurrentAnswerCorrect, let current = state.currentExercise else { return .none }
+
+                state.isCurrentAnswerCorrect = false
+                state.isOverridden = true
+
+                let termId = current.term.id
+                var track = state.termTracks[termId] ?? TermProgressTrack()
+                track.correctCount = max(0, track.correctCount - 1)
+                state.termTracks[termId] = track
+
+                if track.completedExercises == track.totalExercises {
+                    let rating = Rating.calculate(correctCount: track.correctCount, totalExercises: track.totalExercises)
+                    state.termTracks[termId]?.finalRating = rating
+
+                    let currentDate = now
+                    return .run { [persistenceClient, fsrsClient] send in
+                        do {
+                            let currentProgress = try await persistenceClient.fetchLearningProgress(termId) ?? LearningProgress(dueDate: currentDate)
+                            let updatedProgress = fsrsClient.schedule(currentProgress, rating, currentDate)
+                            try await persistenceClient.updateLearningProgress(termId, updatedProgress)
+                            await send(.updateProgressSuccess)
+                        } catch {
+                            await send(.updateProgressFailure(error.localizedDescription))
+                        }
+                    }
+                }
+                return .none
+
             case let .updateProgressFailure(message):
                 state.errorMessage = message
                 return .none
@@ -238,6 +308,8 @@ struct LearningSessionFeature {
                     state.selectedOption = nil
                     state.isAnswerSubmitted = false
                     state.isCurrentAnswerCorrect = false
+                    state.validationResult = nil
+                    state.isOverridden = false
 
                     if let nextEx = state.currentExercise, nextEx.type == .listening {
                         let termText = nextEx.term.termText

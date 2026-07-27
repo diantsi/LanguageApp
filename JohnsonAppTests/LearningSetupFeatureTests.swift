@@ -29,6 +29,22 @@ struct LearningSetupFeatureTests {
         #expect(!AnswerValidator.validate(userAnswer: "banana", targetAnswer: "apple"))
     }
 
+    @Test
+    func testLevenshteinDistance() {
+        #expect(AnswerValidator.levenshteinDistance("apple", "apple") == 0)
+        #expect(AnswerValidator.levenshteinDistance("aple", "apple") == 1)
+        #expect(AnswerValidator.levenshteinDistance("appple", "apple") == 1)
+        #expect(AnswerValidator.levenshteinDistance("banana", "apple") > 2)
+    }
+
+    @Test
+    func testValidateResultTypoDetection() {
+        #expect(AnswerValidator.validateResult(userAnswer: "apple", targetAnswer: "apple") == .correct)
+        #expect(AnswerValidator.validateResult(userAnswer: "aple", targetAnswer: "apple") == .typo(distance: 1))
+        #expect(AnswerValidator.validateResult(userAnswer: "cat", targetAnswer: "car") == .incorrect)
+        #expect(AnswerValidator.validateResult(userAnswer: "banana", targetAnswer: "apple") == .incorrect)
+    }
+
     // MARK: - Rating Calculation Tests
 
     @Test

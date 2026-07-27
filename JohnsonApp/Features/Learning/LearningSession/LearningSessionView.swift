@@ -225,25 +225,119 @@ struct LearningSessionView: View {
     }
 
     private var resultFeedbackBanner: some View {
-        HStack(spacing: 12) {
-            Image(systemName: store.isCurrentAnswerCorrect ? "checkmark.circle.fill" : "xmark.circle.fill")
-                .font(.title2)
+        VStack(spacing: 12) {
+            if store.isCurrentAnswerCorrect {
+                HStack(spacing: 12) {
+                    Image(systemName: "checkmark.circle.fill")
+                        .font(.title2)
 
-            VStack(alignment: .leading, spacing: 2) {
-                Text(store.isCurrentAnswerCorrect ? "Правильно!" : "Неправильно")
-                    .font(.headline)
-
-                if let exercise = store.currentExercise, !store.isCurrentAnswerCorrect {
-                    Text("Правильна відповідь: \(exercise.targetAnswer)")
-                        .font(.subheadline)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(store.isOverridden ? "Зараховано як правильно!" : "Правильно!")
+                            .font(.headline)
+                    }
+                    Spacer()
                 }
+                .padding()
+                .foregroundColor(.green)
+                .background(Color.green.opacity(0.12))
+                .cornerRadius(14)
+            } else if case .typo = store.validationResult, !store.isOverridden {
+                VStack(alignment: .leading, spacing: 10) {
+                    HStack(spacing: 12) {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .font(.title2)
+                            .foregroundColor(.orange)
+
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Майже правильно! (Описка в 1 букву)")
+                                .font(.headline)
+                                .foregroundColor(.orange)
+
+                            if let exercise = store.currentExercise {
+                                Text("Правильна відповідь: \(exercise.targetAnswer)")
+                                    .font(.subheadline)
+                                    .foregroundColor(.secondary)
+                            }
+                        }
+                        Spacer()
+                    }
+
+                    HStack(spacing: 12) {
+                        Button {
+                            store.send(.markAsCorrect)
+                        } label: {
+                            HStack {
+                                Image(systemName: "checkmark.circle")
+                                Text("Зарахувати відповідь")
+                            }
+                            .font(.subheadline.bold())
+                            .foregroundColor(.white)
+                            .padding(.vertical, 8)
+                            .padding(.horizontal, 14)
+                            .background(Color.green)
+                            .cornerRadius(10)
+                        }
+
+                        Button {
+                            store.send(.markAsIncorrect)
+                        } label: {
+                            HStack {
+                                Image(systemName: "xmark.circle")
+                                Text("Вважати помилкою")
+                            }
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                            .padding(.vertical, 8)
+                            .padding(.horizontal, 14)
+                            .background(Color(uiColor: .tertiarySystemGroupedBackground))
+                            .cornerRadius(10)
+                        }
+                    }
+                }
+                .padding()
+                .background(Color.orange.opacity(0.12))
+                .cornerRadius(14)
+            } else {
+                VStack(alignment: .leading, spacing: 10) {
+                    HStack(spacing: 12) {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.title2)
+                            .foregroundColor(.red)
+
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Неправильно")
+                                .font(.headline)
+                                .foregroundColor(.red)
+
+                            if let exercise = store.currentExercise {
+                                Text("Правильна відповідь: \(exercise.targetAnswer)")
+                                    .font(.subheadline)
+                                    .foregroundColor(.secondary)
+                            }
+                        }
+                        Spacer()
+                    }
+
+                    Button {
+                        store.send(.markAsCorrect)
+                    } label: {
+                        HStack {
+                            Image(systemName: "checkmark.circle")
+                            Text("Зарахувати як правильно")
+                        }
+                        .font(.footnote.bold())
+                        .foregroundColor(.green)
+                        .padding(.vertical, 6)
+                        .padding(.horizontal, 12)
+                        .background(Color.green.opacity(0.15))
+                        .cornerRadius(8)
+                    }
+                }
+                .padding()
+                .background(Color.red.opacity(0.12))
+                .cornerRadius(14)
             }
-            Spacer()
         }
-        .padding()
-        .foregroundColor(store.isCurrentAnswerCorrect ? .green : .red)
-        .background((store.isCurrentAnswerCorrect ? Color.green : Color.red).opacity(0.12))
-        .cornerRadius(14)
     }
 }
 
