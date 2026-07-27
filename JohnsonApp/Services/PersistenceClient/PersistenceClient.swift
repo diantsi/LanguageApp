@@ -102,7 +102,9 @@ extension PersistenceClient: DependencyKey {
             addTerms: { _ in },
             updateTerm: { _ in },
             deleteTerm: { _ in },
-            fetchDueTerms: { _, _ in [] },
+            fetchDueTerms: { _, _ in
+                return mockTerms
+            },
             termExists: { termText, translation in
                 let normalizedTerm = termText.trimmingCharacters(in: .whitespaces).lowercased()
                 let normalizedTranslation = translation.trimmingCharacters(in: .whitespaces).lowercased()

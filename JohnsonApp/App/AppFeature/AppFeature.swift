@@ -3,7 +3,6 @@
 //  JohnsonApp
 //
 
-
 import ComposableArchitecture
 import Foundation
 
@@ -22,12 +21,14 @@ struct AppFeature {
         var selectedTab: Tab = .dictionary
         var dictionary = DictionaryFeature.State()
         var flashcard = FlashcardFeature.State()
+        var learning = LearningSetupFeature.State()
     }
     
     enum Action: Equatable {
         case selectTab(Tab)
         case dictionary(DictionaryFeature.Action)
         case flashcard(FlashcardFeature.Action)
+        case learning(LearningSetupFeature.Action)
     }
     
     public var body: some Reducer<State, Action> {
@@ -36,6 +37,9 @@ struct AppFeature {
         }
         Scope(state: \.flashcard, action: \.flashcard) {
             FlashcardFeature()
+        }
+        Scope(state: \.learning, action: \.learning) {
+            LearningSetupFeature()
         }
 
         Reduce{ state, action in
@@ -50,9 +54,10 @@ struct AppFeature {
                 return .none
             case .flashcard:
                 return .none
+            case .learning:
+                return .none
             }
         }
     }
     
 }
-

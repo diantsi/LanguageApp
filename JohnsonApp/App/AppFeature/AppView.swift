@@ -18,31 +18,28 @@ struct AppView: View {
             
             DictionaryView(store: store.scope(state: \.dictionary, action: \.dictionary))
             .tabItem {
-                Label("Dictionary", systemImage: "character.book.closed")
+                Label("Словник", systemImage: "character.book.closed")
             }
             .tag(AppFeature.Tab.dictionary)
             
             FlashcardView(store: store.scope(state: \.flashcard, action: \.flashcard))
             .tabItem {
-                Label("Flashcards", systemImage: "rectangle.portrait.on.rectangle.portrait.angled")
+                Label("Картки", systemImage: "rectangle.portrait.on.rectangle.portrait.angled")
             }
             .tag(AppFeature.Tab.flashcards)
-            
-            NavigationStack {
-                Text("Learning Placeholder")
-                    .navigationTitle("Learning")
-            }
+           
+            LearningSetupView(store: store.scope(state: \.learning, action: \.learning))
             .tabItem {
-                Label("Learning", systemImage: "graduationcap")
+                Label("Навчання", systemImage: "graduationcap")
             }
             .tag(AppFeature.Tab.learning)
             
             NavigationStack {
-                Text("Profile Placeholder")
-                    .navigationTitle("Profile")
+                Text("Профіль")
+                    .navigationTitle("Профіль")
             }
             .tabItem {
-                Label("Profile", systemImage: "person.crop.circle")
+                Label("Профіль", systemImage: "person.crop.circle")
             }
             .tag(AppFeature.Tab.profile)
         }
