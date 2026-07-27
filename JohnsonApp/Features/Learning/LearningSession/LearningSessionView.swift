@@ -11,24 +11,21 @@ struct LearningSessionView: View {
 
     var body: some View {
         VStack(spacing: 16) {
-            // Header Progress
-            if !store.exercises.isEmpty {
-                VStack(spacing: 6) {
-                    HStack {
-                        Text("Вправа \(store.currentIndex + 1) з \(store.exercises.count)")
-                            .font(.caption.bold())
-                            .foregroundColor(.secondary)
-                        Spacer()
-                        Text("Пройдено карток: \(store.completedTermsCount) / \(store.totalTermsInSession)")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                    }
-
-                    ProgressView(value: Double(store.currentIndex + 1), total: Double(store.exercises.count))
-                        .tint(.blue)
+            VStack(spacing: 6) {
+                HStack {
+                    Text("Вправа \(store.currentIndex + 1) з \(store.exercises.count)")
+                        .font(.caption.bold())
+                        .foregroundColor(.secondary)
+                    Spacer()
+                    Text("Пройдено карток: \(store.completedTermsCount) / \(store.totalTermsInSession)")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
                 }
-                .padding(.horizontal)
+
+                ProgressView(value: Double(store.currentIndex + 1), total: Double(store.exercises.count))
+                    .tint(.blue)
             }
+            .padding(.horizontal)
 
             ScrollView {
                 VStack(spacing: 20) {
@@ -43,7 +40,6 @@ struct LearningSessionView: View {
                 .padding(.horizontal)
             }
 
-            // Bottom Action Bar
             VStack {
                 if !store.isAnswerSubmitted {
                     Button {
@@ -54,10 +50,10 @@ struct LearningSessionView: View {
                             .foregroundColor(.white)
                             .frame(maxWidth: .infinity)
                             .padding()
-                            .background(isSubmitDisabled ? Color.gray : Color.blue)
+                            .background(store.isSubmitDisabled ? Color.gray : Color.blue)
                             .cornerRadius(14)
                     }
-                    .disabled(isSubmitDisabled)
+                    .disabled(store.isSubmitDisabled)
                 } else {
                     Button {
                         store.send(.nextExercise)
@@ -80,20 +76,11 @@ struct LearningSessionView: View {
         }
     }
 
-    private var isSubmitDisabled: Bool {
-        guard let exercise = store.currentExercise else { return true }
-        if exercise.type == .multipleChoice {
-            return store.selectedOption == nil
-        } else {
-            return store.userAnswer.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-        }
-    }
-
     @ViewBuilder
     private func exerciseCardView(_ exercise: Exercise) -> some View {
         VStack(alignment: .leading, spacing: 16) {
             HStack {
-                Text(exerciseTypeTitle(exercise.type))
+                Text(exercise.type.title)
                     .font(.caption.bold())
                     .padding(.horizontal, 10)
                     .padding(.vertical, 4)
@@ -257,15 +244,6 @@ struct LearningSessionView: View {
         .foregroundColor(store.isCurrentAnswerCorrect ? .green : .red)
         .background((store.isCurrentAnswerCorrect ? Color.green : Color.red).opacity(0.12))
         .cornerRadius(14)
-    }
-
-    private func exerciseTypeTitle(_ type: ExerciseType) -> String {
-        switch type {
-        case .multipleChoice: return "Множинний вибір"
-        case .writeTerm: return "Написати термін"
-        case .writeTranslation: return "Написати переклад"
-        case .listening: return "Аудіювання"
-        }
     }
 }
 

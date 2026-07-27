@@ -33,19 +33,19 @@ struct LearningSetupFeatureTests {
 
     @Test
     func testRatingCalculationWithFourExercises() {
-        #expect(LearningSessionFeature.calculateRating(correctCount: 0, totalExercises: 4) == .again)
-        #expect(LearningSessionFeature.calculateRating(correctCount: 1, totalExercises: 4) == .again)
-        #expect(LearningSessionFeature.calculateRating(correctCount: 2, totalExercises: 4) == .hard)
-        #expect(LearningSessionFeature.calculateRating(correctCount: 3, totalExercises: 4) == .good)
-        #expect(LearningSessionFeature.calculateRating(correctCount: 4, totalExercises: 4) == .easy)
+        #expect(Rating.calculate(correctCount: 0, totalExercises: 4) == .again)
+        #expect(Rating.calculate(correctCount: 1, totalExercises: 4) == .again)
+        #expect(Rating.calculate(correctCount: 2, totalExercises: 4) == .hard)
+        #expect(Rating.calculate(correctCount: 3, totalExercises: 4) == .good)
+        #expect(Rating.calculate(correctCount: 4, totalExercises: 4) == .easy)
     }
 
     @Test
     func testRatingCalculationWithThreeExercises() {
-        #expect(LearningSessionFeature.calculateRating(correctCount: 0, totalExercises: 3) == .again)
-        #expect(LearningSessionFeature.calculateRating(correctCount: 1, totalExercises: 3) == .hard)
-        #expect(LearningSessionFeature.calculateRating(correctCount: 2, totalExercises: 3) == .good)
-        #expect(LearningSessionFeature.calculateRating(correctCount: 3, totalExercises: 3) == .easy)
+        #expect(Rating.calculate(correctCount: 0, totalExercises: 3) == .again)
+        #expect(Rating.calculate(correctCount: 1, totalExercises: 3) == .hard)
+        #expect(Rating.calculate(correctCount: 2, totalExercises: 3) == .good)
+        #expect(Rating.calculate(correctCount: 3, totalExercises: 3) == .easy)
     }
 
     // MARK: - LearningSetupFeature Tests

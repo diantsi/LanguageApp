@@ -130,6 +130,15 @@ struct LearningSessionFeature {
             return exercises[currentIndex]
         }
 
+        var isSubmitDisabled: Bool {
+            guard let exercise = currentExercise else { return true }
+            if exercise.type == .multipleChoice {
+                return selectedOption == nil
+            } else {
+                return userAnswer.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            }
+        }
+
         var completedTermsCount: Int {
             termTracks.values.filter { $0.completedExercises == $0.totalExercises && $0.totalExercises > 0 }.count
         }
@@ -197,7 +206,7 @@ struct LearningSessionFeature {
                 state.termTracks[termId] = track
 
                 if track.completedExercises == track.totalExercises {
-                    let rating = Self.calculateRating(correctCount: track.correctCount, totalExercises: track.totalExercises)
+                    let rating = Rating.calculate(correctCount: track.correctCount, totalExercises: track.totalExercises)
                     state.termTracks[termId]?.finalRating = rating
 
                     let currentDate = now
@@ -257,24 +266,6 @@ struct LearningSessionFeature {
 
             case .delegate:
                 return .none
-            }
-        }
-    }
-
-    static func calculateRating(correctCount: Int, totalExercises: Int) -> Rating {
-        if totalExercises >= 4 {
-            switch correctCount {
-            case 0...1: return .again
-            case 2:     return .hard
-            case 3:     return .good
-            default:    return .easy
-            }
-        } else {
-            switch correctCount {
-            case 0:  return .again
-            case 1:  return .hard
-            case 2:  return .good
-            default: return .easy
             }
         }
     }
