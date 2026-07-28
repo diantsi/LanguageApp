@@ -44,6 +44,8 @@ struct DictionaryFeature {
         @Presents var alert: AlertState<Action.Alert>?
 
         var sessionId: UUID = UUID()
+        var termLanguage: Language = .english
+        var translationLanguage: Language = .ukrainian
 
         init(
             terms: [Term] = [],
@@ -54,7 +56,9 @@ struct DictionaryFeature {
             addTerms: AddTermsFeature.State? = nil,
             editTerm: EditTermFeature.State? = nil,
             alert: AlertState<Action.Alert>? = nil,
-            sessionId: UUID = UUID()
+            sessionId: UUID = UUID(),
+            termLanguage: Language = .english,
+            translationLanguage: Language = .ukrainian
         ) {
             self.terms = terms
             self.searchQuery = searchQuery
@@ -65,6 +69,8 @@ struct DictionaryFeature {
             self.editTerm = editTerm
             self.alert = alert
             self.sessionId = sessionId
+            self.termLanguage = termLanguage
+            self.translationLanguage = translationLanguage
         }
     }
 
@@ -164,7 +170,11 @@ struct DictionaryFeature {
                 return .none
 
             case .addButtonTapped:
-                state.addTerms = AddTermsFeature.State()
+                state.addTerms = AddTermsFeature.State(
+                    termLanguage: state.termLanguage,
+                    translationLanguage: state.translationLanguage,
+                    sessionId: state.sessionId
+                )
                 return .none
 
             case let .termTapped(dto):
