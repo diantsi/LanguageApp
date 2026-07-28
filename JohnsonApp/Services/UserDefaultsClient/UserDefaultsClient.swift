@@ -8,7 +8,9 @@ import Dependencies
 import Foundation
 
 
-private let activeSessionIdKey = "activeSessionId"
+private enum Keys {
+    nonisolated static let activeSessionId = "activeSessionId"
+}
 
 struct UserDefaultsClient: Sendable {
     var activeSessionId:    @Sendable () -> UUID?
@@ -21,16 +23,16 @@ extension UserDefaultsClient: DependencyKey {
     static var liveValue: Self {
         Self(
             activeSessionId: {
-                guard let raw = UserDefaults.standard.string(forKey: activeSessionIdKey) else {
+                guard let raw = UserDefaults.standard.string(forKey: Keys.activeSessionId) else {
                     return nil
                 }
                 return UUID(uuidString: raw)
             },
             setActiveSessionId: { id in
                 if let id {
-                    UserDefaults.standard.set(id.uuidString, forKey: activeSessionIdKey)
+                    UserDefaults.standard.set(id.uuidString, forKey: Keys.activeSessionId)
                 } else {
-                    UserDefaults.standard.removeObject(forKey: activeSessionIdKey)
+                    UserDefaults.standard.removeObject(forKey: Keys.activeSessionId)
                 }
             }
         )
