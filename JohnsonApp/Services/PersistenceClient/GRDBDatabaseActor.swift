@@ -15,9 +15,44 @@ actor GRDBDatabaseActor {
     }
 
 
+    // MARK: - DB Rows
+
+    private struct SessionRow: Codable, FetchableRecord, PersistableRecord, Sendable {
+        static let databaseTableName = "language_sessions"
+        var id: String
+        var name: String
+        var termLanguage: String
+        var translationLanguage: String
+        var createdAt: Double
+
+        init(session: LanguageSession) {
+            self.id = session.id.uuidString
+            self.name = session.name
+            self.termLanguage = session.termLanguage.rawValue
+            self.translationLanguage = session.translationLanguage.rawValue
+            self.createdAt = session.createdAt.timeIntervalSince1970
+        }
+
+        func toSession() -> LanguageSession? {
+            guard
+                let uuid = UUID(uuidString: id),
+                let termLang = Language(rawValue: termLanguage),
+                let transLang = Language(rawValue: translationLanguage)
+            else { return nil }
+            return LanguageSession(
+                id: uuid,
+                name: name,
+                termLanguage: termLang,
+                translationLanguage: transLang,
+                createdAt: Date(timeIntervalSince1970: createdAt)
+            )
+        }
+    }
+
     private struct TermRow: Codable, FetchableRecord, PersistableRecord, Sendable {
         static let databaseTableName = "terms"
         var id: String
+        var sessionId: String
         var termText: String
         var translation: String
         var hint: String?
@@ -26,8 +61,9 @@ actor GRDBDatabaseActor {
         var createdAt: Double
         var updatedAt: Double
 
-        init(term: Term) {
+        init(sessionId: UUID, term: Term) {
             self.id = term.id.uuidString
+            self.sessionId = sessionId.uuidString
             self.termText = term.termText
             self.translation = term.translation
             self.hint = term.hint
@@ -125,6 +161,9 @@ actor GRDBDatabaseActor {
         }
     }
 
+
+    // MARK: - SQL Helpers
+
     private static let statusCaseSQL = """
         CASE
           WHEN lp.termId IS NULL OR lp.lastReviewDate IS NULL THEN 'new'
@@ -144,7 +183,34 @@ actor GRDBDatabaseActor {
         """
 
 
+    // MARK: - Session Operations
+
+    func fetchSessions() throws -> [LanguageSession] {
+        try pool.read { db in
+            try SessionRow
+                .order(Column("createdAt").asc)
+                .fetchAll(db)
+                .compactMap { $0.toSession() }
+        }
+    }
+
+    func addSession(_ session: LanguageSession) throws {
+        try pool.write { db in
+            try SessionRow(session: session).insert(db)
+        }
+    }
+
+    func deleteSession(id: UUID) throws {
+        try pool.write { db in
+            _ = try SessionRow.deleteOne(db, key: id.uuidString)
+        }
+    }
+
+
+    // MARK: - Term Operations
+
     func fetchTerms(
+        sessionId: UUID,
         query: String?,
         status: LearningStatus?,
         limit: Int?,
@@ -157,14 +223,15 @@ actor GRDBDatabaseActor {
             var sql = """
                 WITH enriched AS (
                   \(Self.termJoinSQL)
-                  WHERE \(hasQuery ? "(t.termText LIKE ? OR t.translation LIKE ?)" : "1=1")
+                  WHERE t.sessionId = ?
+                  \(hasQuery ? "AND (t.termText LIKE ? OR t.translation LIKE ?)" : "")
                 )
                 SELECT * FROM enriched
                 WHERE \(hasStatus ? "status = ?" : "1=1")
                 ORDER BY createdAt DESC
                 """
 
-            var arguments: [DatabaseValue] = []
+            var arguments: [DatabaseValue] = [sessionId.uuidString.databaseValue]
 
             if hasQuery, let q = query {
                 let pattern = "%\(q)%"
@@ -202,17 +269,17 @@ actor GRDBDatabaseActor {
         }
     }
 
-    func addTerm(_ term: Term) throws {
+    func addTerm(sessionId: UUID, _ term: Term) throws {
         try pool.write { db in
-            try TermRow(term: term).insert(db)
+            try TermRow(sessionId: sessionId, term: term).insert(db)
             try LearningProgressRow(termId: term.id.uuidString, dueDate: term.createdAt).insert(db)
         }
     }
 
-    func addTerms(_ terms: [Term]) throws {
+    func addTerms(sessionId: UUID, _ terms: [Term]) throws {
         try pool.write { db in
             for term in terms {
-                try TermRow(term: term).insert(db)
+                try TermRow(sessionId: sessionId, term: term).insert(db)
                 try LearningProgressRow(termId: term.id.uuidString, dueDate: term.createdAt).insert(db)
             }
         }
@@ -220,7 +287,15 @@ actor GRDBDatabaseActor {
 
     func updateTerm(_ term: Term) throws {
         try pool.write { db in
-            try TermRow(term: term).update(db)
+            // Fetch existing row to preserve sessionId (not part of Term domain model)
+            guard var row = try TermRow.fetchOne(db, key: term.id.uuidString) else { return }
+            row.termText = term.termText
+            row.translation = term.translation
+            row.hint = term.hint
+            row.termLanguage = term.termLanguage.rawValue
+            row.translationLanguage = term.translationLanguage.rawValue
+            row.updatedAt = term.updatedAt.timeIntervalSince1970
+            try row.update(db)
         }
     }
 
@@ -230,7 +305,7 @@ actor GRDBDatabaseActor {
         }
     }
 
-    func fetchDueTerms(date: Date, limit: Int) throws -> [Term] {
+    func fetchDueTerms(sessionId: UUID, date: Date, limit: Int) throws -> [Term] {
         try pool.read { db in
             let sql = """
                 SELECT
@@ -240,27 +315,29 @@ actor GRDBDatabaseActor {
                   \(Self.statusCaseSQL)
                 FROM learning_progress lp
                 INNER JOIN terms t ON t.id = lp.termId
-                WHERE lp.dueDate <= ?
+                WHERE t.sessionId = ?
+                  AND lp.dueDate <= ?
                 ORDER BY lp.dueDate ASC
                 LIMIT ?
                 """
             return try TermWithStatusRow
-                .fetchAll(db, sql: sql, arguments: [date.timeIntervalSince1970, limit])
+                .fetchAll(db, sql: sql, arguments: [sessionId.uuidString, date.timeIntervalSince1970, limit])
                 .compactMap { $0.toTerm() }
         }
     }
 
-    func termExists(termText: String, translation: String) throws -> Bool {
+    func termExists(sessionId: UUID, termText: String, translation: String) throws -> Bool {
         try pool.read { db in
             let row = try Row.fetchOne(
                 db,
                 sql: """
                     SELECT 1 FROM terms
-                    WHERE TRIM(termText) COLLATE swift_nocase = TRIM(?) COLLATE swift_nocase
+                    WHERE sessionId = ?
+                      AND TRIM(termText) COLLATE swift_nocase = TRIM(?) COLLATE swift_nocase
                       AND TRIM(translation) COLLATE swift_nocase = TRIM(?) COLLATE swift_nocase
                     LIMIT 1
                     """,
-                arguments: [termText, translation]
+                arguments: [sessionId.uuidString, termText, translation]
             )
             return row != nil
         }

@@ -42,7 +42,7 @@ struct FlashcardFeatureTests {
         let store = TestStore(initialState: FlashcardFeature.State()) {
             FlashcardFeature()
         } withDependencies: {
-            $0.persistenceClient.fetchTerms = { _, _, _, _ in Self.mockTerms }
+            $0.persistenceClient.fetchTerms = { _, _, _, _, _ in Self.mockTerms }
         }
         store.exhaustivity = .off
 
@@ -61,7 +61,7 @@ struct FlashcardFeatureTests {
         let store = TestStore(initialState: FlashcardFeature.State()) {
             FlashcardFeature()
         } withDependencies: {
-            $0.persistenceClient.fetchTerms = { _, _, _, _ in [] }
+            $0.persistenceClient.fetchTerms = { _, _, _, _, _ in [] }
         }
 
         await store.send(.onAppear) {
@@ -209,7 +209,7 @@ struct FlashcardFeatureTests {
         let store = TestStore(initialState: FlashcardFeature.State()) {
             FlashcardFeature()
         } withDependencies: {
-            $0.persistenceClient.fetchTerms = { _, _, _, _ in [] }
+            $0.persistenceClient.fetchTerms = { _, _, _, _, _ in [] }
         }
 
         await store.send(.onAppear) {

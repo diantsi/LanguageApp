@@ -19,6 +19,8 @@ struct LearningSetupFeature {
         var isLoading: Bool = false
         var errorMessage: String? = nil
 
+        var sessionId: UUID = UUID()
+
         var session: LearningSessionFeature.State?
         var summary: LearningSummaryFeature.State?
 
@@ -28,6 +30,7 @@ struct LearningSetupFeature {
             qTermsLearned: Int = 0,
             isLoading: Bool = false,
             errorMessage: String? = nil,
+            sessionId: UUID = UUID(),
             session: LearningSessionFeature.State? = nil,
             summary: LearningSummaryFeature.State? = nil
         ) {
@@ -36,6 +39,7 @@ struct LearningSetupFeature {
             self.qTermsLearned = qTermsLearned
             self.isLoading = isLoading
             self.errorMessage = errorMessage
+            self.sessionId = sessionId
             self.session = session
             self.summary = summary
         }
@@ -69,9 +73,10 @@ struct LearningSetupFeature {
                 state.errorMessage = nil
                 let curDate = now
                 let maxCap = Self.maxDailyTermsLimit
+                let sessionId = state.sessionId
                 return .run { [persistenceClient] send in
                     do {
-                        let terms = try await persistenceClient.fetchDueTerms(curDate, maxCap)
+                        let terms = try await persistenceClient.fetchDueTerms(sessionId, curDate, maxCap)
                         await send(.fetchDueTermsSuccess(terms))
                     } catch {
                         await send(.fetchDueTermsFailure(error.localizedDescription))

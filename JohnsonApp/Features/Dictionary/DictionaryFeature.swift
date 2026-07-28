@@ -43,6 +43,8 @@ struct DictionaryFeature {
         @Presents var editTerm: EditTermFeature.State?
         @Presents var alert: AlertState<Action.Alert>?
 
+        var sessionId: UUID = UUID()
+
         init(
             terms: [Term] = [],
             searchQuery: String = "",
@@ -51,7 +53,8 @@ struct DictionaryFeature {
             hasMore: Bool = true,
             addTerms: AddTermsFeature.State? = nil,
             editTerm: EditTermFeature.State? = nil,
-            alert: AlertState<Action.Alert>? = nil
+            alert: AlertState<Action.Alert>? = nil,
+            sessionId: UUID = UUID()
         ) {
             self.terms = terms
             self.searchQuery = searchQuery
@@ -61,6 +64,7 @@ struct DictionaryFeature {
             self.addTerms = addTerms
             self.editTerm = editTerm
             self.alert = alert
+            self.sessionId = sessionId
         }
     }
 
@@ -117,9 +121,10 @@ struct DictionaryFeature {
                 let query = state.searchQuery
                 let status = state.statusFilter.learningStatus
                 let limit = pageSize
+                let sessionId = state.sessionId
                 return .run { send in
                     do {
-                        let terms = try await persistenceClient.fetchTerms(query, status, limit, 0)
+                        let terms = try await persistenceClient.fetchTerms(sessionId, query, status, limit, 0)
                         await send(.fetchTermsSuccess(terms, isLoadMore: false))
                     } catch {
                         await send(.fetchTermsFailure(error.localizedDescription))
@@ -133,9 +138,10 @@ struct DictionaryFeature {
                 let status = state.statusFilter.learningStatus
                 let limit = pageSize
                 let offset = state.terms.count
+                let sessionId = state.sessionId
                 return .run { send in
                     do {
-                        let terms = try await persistenceClient.fetchTerms(query, status, limit, offset)
+                        let terms = try await persistenceClient.fetchTerms(sessionId, query, status, limit, offset)
                         await send(.fetchTermsSuccess(terms, isLoadMore: true))
                     } catch {
                         await send(.fetchTermsFailure(error.localizedDescription))

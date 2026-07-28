@@ -40,7 +40,7 @@ final class DictionaryFeatureTests: XCTestCase {
         let store = TestStore(initialState: DictionaryFeature.State()) {
             DictionaryFeature()
         } withDependencies: {
-            $0.persistenceClient.fetchTerms = { _, _, _, _ in mockTerms }
+            $0.persistenceClient.fetchTerms = { _, _, _, _, _ in mockTerms }
         }
 
         await store.send(.onAppear) {
@@ -66,7 +66,7 @@ final class DictionaryFeatureTests: XCTestCase {
         let store = TestStore(initialState: DictionaryFeature.State()) {
             DictionaryFeature()
         } withDependencies: {
-            $0.persistenceClient.fetchTerms = { _, _, _, _ in mockTerms }
+            $0.persistenceClient.fetchTerms = { _, _, _, _, _ in mockTerms }
             $0.continuousClock = clock
         }
 
@@ -101,7 +101,7 @@ final class DictionaryFeatureTests: XCTestCase {
         let store = TestStore(initialState: DictionaryFeature.State()) {
             DictionaryFeature()
         } withDependencies: {
-            $0.persistenceClient.fetchTerms = { _, status, _, _ in
+            $0.persistenceClient.fetchTerms = { _, _, status, _, _ in
                 guard let status else { return allTerms }
                 return allTerms.filter { $0.status == status }
             }
@@ -154,7 +154,7 @@ final class DictionaryFeatureTests: XCTestCase {
         let store = TestStore(initialState: DictionaryFeature.State()) {
             DictionaryFeature()
         } withDependencies: {
-            $0.persistenceClient.fetchTerms = { _, _, _, offset in
+            $0.persistenceClient.fetchTerms = { _, _, _, _, offset in
                 offset == 0 ? firstPage : secondPage
             }
         }

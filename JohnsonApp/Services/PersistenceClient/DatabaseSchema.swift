@@ -42,7 +42,7 @@ enum DatabaseSchema {
                 t.column("stability", .double).notNull().defaults(to: 0.0)
                 t.column("difficulty", .double).notNull().defaults(to: 0.0)
                 t.column("dueDate", .double).notNull()
-                t.column("lastReviewDate", .double)          
+                t.column("lastReviewDate", .double)
                 t.column("repetitions", .integer).notNull().defaults(to: 0)
                 t.column("lapses", .integer).notNull().defaults(to: 0)
             }
@@ -51,6 +51,27 @@ enum DatabaseSchema {
                 index: "idx_lp_due_date",
                 on: "learning_progress",
                 columns: ["dueDate"]
+            )
+        }
+
+        migrator.registerMigration("v2_language_sessions") { db in
+            try db.create(table: "language_sessions") { t in
+                t.column("id", .text).primaryKey()
+                t.column("name", .text).notNull()
+                t.column("termLanguage", .text).notNull()
+                t.column("translationLanguage", .text).notNull()
+                t.column("createdAt", .double).notNull()
+            }
+
+            try db.alter(table: "terms") { t in
+                t.add(column: "sessionId", .text)
+                    .references("language_sessions", column: "id", onDelete: .cascade)
+            }
+
+            try db.create(
+                index: "idx_terms_session",
+                on: "terms",
+                columns: ["sessionId"]
             )
         }
 

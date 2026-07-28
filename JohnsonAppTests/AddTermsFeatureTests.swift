@@ -35,7 +35,7 @@ final class AddTermsFeatureTests: XCTestCase {
             AddTermsFeature()
         } withDependencies: {
             $0.importClient.parse = { _ in result }
-            $0.persistenceClient.termExists = { _, _ in false }
+            $0.persistenceClient.termExists = { _, _, _ in false }
         }
 
         await store.send(.parseButtonTapped) {
@@ -66,7 +66,7 @@ final class AddTermsFeatureTests: XCTestCase {
             AddTermsFeature()
         } withDependencies: {
             $0.importClient.parse = { _ in result }
-            $0.persistenceClient.termExists = { _, _ in false }
+            $0.persistenceClient.termExists = { _, _, _ in false }
         }
 
         await store.send(.parseButtonTapped) { $0.isLoading = true }
@@ -108,7 +108,7 @@ final class AddTermsFeatureTests: XCTestCase {
         ) {
             AddTermsFeature()
         } withDependencies: {
-            $0.persistenceClient.addTerms = { savedTerms.append(contentsOf: $0) }
+            $0.persistenceClient.addTerms = { _, terms in savedTerms.append(contentsOf: terms) }
             $0.uuid = .constant(testUUID)
             $0.date = .constant(testDate)
         }
@@ -161,7 +161,7 @@ final class AddTermsFeatureTests: XCTestCase {
             AddTermsFeature()
         } withDependencies: {
             $0.importClient.parse = { _ in result }
-            $0.persistenceClient.termExists = { termText, translation in
+            $0.persistenceClient.termExists = { _, termText, translation in
                 termText.lowercased() == existing.termText.lowercased() &&
                 translation.lowercased() == existing.translation.lowercased()
             }
@@ -202,11 +202,11 @@ final class AddTermsFeatureTests: XCTestCase {
             AddTermsFeature()
         } withDependencies: {
             $0.importClient.parse = { _ in result }
-            $0.persistenceClient.termExists = { termText, translation in
+            $0.persistenceClient.termExists = { _, termText, translation in
                 termText.lowercased() == existing.termText.lowercased() &&
                 translation.lowercased() == existing.translation.lowercased()
             }
-            $0.persistenceClient.addTerms = { savedTerms.append(contentsOf: $0) }
+            $0.persistenceClient.addTerms = { _, terms in savedTerms.append(contentsOf: terms) }
             $0.uuid = .constant(testUUID)
             $0.date = .constant(testDate)
         }
@@ -242,8 +242,8 @@ final class AddTermsFeatureTests: XCTestCase {
             AddTermsFeature()
         } withDependencies: {
             $0.importClient.parse = { _ in result }
-            $0.persistenceClient.termExists = { _, _ in false }
-            $0.persistenceClient.addTerms = { savedTerms.append(contentsOf: $0) }
+            $0.persistenceClient.termExists = { _, _, _ in false }
+            $0.persistenceClient.addTerms = { _, terms in savedTerms.append(contentsOf: terms) }
             $0.uuid = .constant(testUUID)
             $0.date = .constant(testDate)
         }

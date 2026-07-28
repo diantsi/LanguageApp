@@ -20,6 +20,8 @@ struct AddTermsFeature {
 
         var termLanguage: Language = .english
         var translationLanguage: Language = .ukrainian
+        
+        var sessionId: UUID = UUID()
 
         var canSave: Bool { isParsed && !parsedTerms.isEmpty && !isLoading }
 
@@ -31,7 +33,8 @@ struct AddTermsFeature {
             isLoading: Bool = false,
             isParsed: Bool = false,
             termLanguage: Language = .english,
-            translationLanguage: Language = .ukrainian
+            translationLanguage: Language = .ukrainian,
+            sessionId: UUID = UUID()
         ) {
             self.inputText = inputText
             self.parsedTerms = parsedTerms
@@ -41,6 +44,7 @@ struct AddTermsFeature {
             self.isParsed = isParsed
             self.termLanguage = termLanguage
             self.translationLanguage = translationLanguage
+            self.sessionId = sessionId
         }
     }
 
@@ -78,6 +82,7 @@ struct AddTermsFeature {
             case .parseButtonTapped:
                 guard !state.inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return .none }
                 let text = state.inputText
+                let sessionId = state.sessionId
                 state.isLoading = true
                 return .run { [importClient, persistenceClient] send in
                     let result = importClient.parse(text)
@@ -101,7 +106,7 @@ struct AddTermsFeature {
                         } else {
                             seenTerms.insert(normalizedKey)
                             do {
-                                let isDuplicate = try await persistenceClient.termExists(term.termText, term.translation)
+                                let isDuplicate = try await persistenceClient.termExists(sessionId, term.termText, term.translation)
                                 if isDuplicate {
                                     foundDuplicates = true
                                 } else {
@@ -137,6 +142,7 @@ struct AddTermsFeature {
                 state.isLoading = true
                 let termLanguage = state.termLanguage
                 let translationLanguage = state.translationLanguage
+                let sessionId = state.sessionId
                 let generateUUID = self.uuid
                 let dateNow = self.date.now
                 return .run { [toSave] send in
@@ -154,7 +160,7 @@ struct AddTermsFeature {
                                 status: .new
                             )
                         }
-                        try await persistenceClient.addTerms(terms)
+                        try await persistenceClient.addTerms(sessionId, terms)
                         await send(.saveCompleted)
                     } catch {
                         await send(.saveFailure(error.localizedDescription))

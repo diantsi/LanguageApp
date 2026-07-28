@@ -90,7 +90,7 @@ struct LearningSetupFeatureTests {
             LearningSetupFeature()
         } withDependencies: {
             $0.date.now = Date(timeIntervalSince1970: 1000)
-            $0.persistenceClient.fetchDueTerms = { _, _ in [term1, term2] }
+            $0.persistenceClient.fetchDueTerms = { _, _, _ in [term1, term2] }
         }
         store.exhaustivity = .off
 

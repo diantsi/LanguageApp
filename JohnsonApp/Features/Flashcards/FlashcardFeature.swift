@@ -45,18 +45,22 @@ struct FlashcardFeature {
         var firstSide: FirstSide = .term
         var isLoading: Bool = false
 
+        var sessionId: UUID = UUID()
+
         init(
             cards: [Term] = [],
             currentIndex: Int = 0,
             isFlipped: Bool = false,
             firstSide: FirstSide = .term,
-            isLoading: Bool = false
+            isLoading: Bool = false,
+            sessionId: UUID = UUID()
         ) {
             self.cards = cards
             self.currentIndex = currentIndex
             self.isFlipped = isFlipped
             self.firstSide = firstSide
             self.isLoading = isLoading
+            self.sessionId = sessionId
         }
 
         var currentCard: Term? {
@@ -154,10 +158,11 @@ struct FlashcardFeature {
             case .onAppear:
                 state.isLoading = true
                 state.isFlipped = false
+                let sessionId = state.sessionId
                 return .run { [speechClient] send in
                     await speechClient.stop()
                     do {
-                        let terms = try await persistenceClient.fetchTerms(nil, nil, nil, nil)
+                        let terms = try await persistenceClient.fetchTerms(sessionId, nil, nil, nil, nil)
                         await send(.fetchTermsSuccess(terms))
                     } catch {
                         await send(.fetchTermsFailure)
