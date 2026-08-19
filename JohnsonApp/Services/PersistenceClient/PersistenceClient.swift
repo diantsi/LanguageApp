@@ -13,6 +13,7 @@ struct PersistenceClient {
 
     // MARK: - Session Operations
     var fetchSessions:  @Sendable () async throws -> [LanguageSession]
+    var fetchSession:   @Sendable (UUID) async throws -> LanguageSession?
     var addSession:     @Sendable (LanguageSession) async throws -> Void
     var deleteSession:  @Sendable (UUID) async throws -> Void
 
@@ -39,6 +40,9 @@ extension PersistenceClient: DependencyKey {
         return Self(
             fetchSessions: {
                 try await actor.fetchSessions()
+            },
+            fetchSession: { id in
+                try await actor.fetchSession(id: id)
             },
             addSession: { session in
                 try await actor.addSession(session)
@@ -84,6 +88,7 @@ extension PersistenceClient: DependencyKey {
 
     static let testValue = Self(
         fetchSessions:          { [] },
+        fetchSession:           { _ in nil },
         addSession:             { _ in },
         deleteSession:          { _ in },
         fetchTerms:             { _, _, _, _, _ in [] },
@@ -104,6 +109,7 @@ extension PersistenceClient: DependencyKey {
         let mockTerms = Term.mockList
         return Self(
             fetchSessions: { [mockSession] },
+            fetchSession:  { _ in mockSession },
             addSession: { _ in },
             deleteSession: { _ in },
             fetchTerms: { _, query, status, limit, offset in

@@ -55,14 +55,11 @@ struct AppView: View {
                 }
                 .tag(AppFeature.Tab.learning)
 
-            NavigationStack {
-                Text("Профіль")
-                    .navigationTitle("Профіль")
-            }
-            .tabItem {
-                Label("Профіль", systemImage: "person.crop.circle")
-            }
-            .tag(AppFeature.Tab.profile)
+            ProfileView(store: store.scope(state: \.profile, action: \.profile))
+                .tabItem {
+                    Label("Профіль", systemImage: "person.crop.circle")
+                }
+                .tag(AppFeature.Tab.profile)
         }
     }
 }

@@ -26,9 +26,10 @@ struct AppFeature {
 
         var createSession: CreateSessionFeature.State = CreateSessionFeature.State()
 
-        var dictionary = DictionaryFeature.State()
+        var dictionary  = DictionaryFeature.State()
         var flashcard   = FlashcardFeature.State()
         var learning    = LearningSetupFeature.State()
+        var profile     = ProfileFeature.State()
     }
 
     enum Action: Equatable {
@@ -41,6 +42,7 @@ struct AppFeature {
         case dictionary(DictionaryFeature.Action)
         case flashcard(FlashcardFeature.Action)
         case learning(LearningSetupFeature.Action)
+        case profile(ProfileFeature.Action)
     }
 
     @Dependency(\.persistenceClient) var persistenceClient
@@ -58,6 +60,9 @@ struct AppFeature {
         }
         Scope(state: \.learning, action: \.learning) {
             LearningSetupFeature()
+        }
+        Scope(state: \.profile, action: \.profile) {
+            ProfileFeature()
         }
 
         Reduce { state, action in
@@ -90,6 +95,7 @@ struct AppFeature {
                 state.dictionary.translationLanguage = session.translationLanguage
                 state.flashcard.sessionId  = session.id
                 state.learning.sessionId   = session.id
+                state.profile.activeSessionId = session.id
                 return .send(.dictionary(.onAppear))
 
             case .noSessionFound:
@@ -111,6 +117,7 @@ struct AppFeature {
                 state.dictionary.translationLanguage = session.translationLanguage
                 state.flashcard.sessionId  = session.id
                 state.learning.sessionId   = session.id
+                state.profile.activeSessionId = session.id
                 return .send(.dictionary(.onAppear))
 
             case .createSession:
@@ -128,6 +135,25 @@ struct AppFeature {
                 return .none
 
             case .learning:
+                return .none
+                
+            case .profile(.delegate(.activeSessionChanged(let newSession))):
+                state.activeSession = newSession
+                userDefaultsClient.setActiveSessionId(newSession.id)
+                state.dictionary.sessionId = newSession.id
+                state.dictionary.termLanguage = newSession.termLanguage
+                state.dictionary.translationLanguage = newSession.translationLanguage
+                state.flashcard.sessionId = newSession.id
+                state.learning.sessionId = newSession.id
+                return .send(.dictionary(.onAppear))
+
+            case .profile(.delegate(.sessionDeleted(let remaining))):
+                if remaining.isEmpty {
+                    state.activeSession = nil
+                }
+                return .none
+
+            case .profile:
                 return .none
             }
         }

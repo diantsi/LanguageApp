@@ -193,6 +193,15 @@ actor GRDBDatabaseActor {
                 .compactMap { $0.toSession() }
         }
     }
+    
+    
+    func fetchSession(id: UUID) throws -> LanguageSession? {
+        try pool.read { db in
+            try SessionRow
+                .fetchOne(db, sql: "SELECT * FROM language_sessions ls WHERE ls.id = \(id.uuidString)")
+                .flatMap { $0.toSession() }
+        }
+    }
 
     func addSession(_ session: LanguageSession) throws {
         try pool.write { db in
