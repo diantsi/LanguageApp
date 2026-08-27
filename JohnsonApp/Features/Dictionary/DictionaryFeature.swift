@@ -103,8 +103,9 @@ struct DictionaryFeature {
         Reduce { state, action in
             switch action {
             case .onAppear:
-                guard state.terms.isEmpty else { return .none }
                 state.isLoading = true
+                state.terms = []
+                state.hasMore = true
                 return .send(.fetchTerms)
 
             case let .searchQueryChanged(query):
