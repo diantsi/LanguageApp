@@ -17,6 +17,7 @@ struct ProfileFeature {
 
         var sessions: [LanguageSession] = []
         var activeSessionId: UUID? = nil
+        var termCounts: [UUID: Int] = [:]
 
         var activeSession: LanguageSession? {
             guard let activeSessionId else { return nil }
@@ -31,6 +32,7 @@ struct ProfileFeature {
             userStreak: Int = 0,
             sessions: [LanguageSession] = [],
             activeSessionId: UUID? = nil,
+            termCounts: [UUID: Int] = [:],
             addSession: CreateSessionFeature.State? = nil,
             alert: AlertState<Action.Alert>? = nil
         ) {
@@ -38,6 +40,7 @@ struct ProfileFeature {
             self.userStreak = userStreak
             self.sessions = sessions
             self.activeSessionId = activeSessionId
+            self.termCounts = termCounts
             self.addSession = addSession
             self.alert = alert
         }
@@ -45,7 +48,7 @@ struct ProfileFeature {
 
     enum Action: Equatable {
         case onAppear
-        case fetchSessionsSuccess(sessions: [LanguageSession], activeSessionId: UUID?)
+        case fetchSessionsSuccess(sessions: [LanguageSession], activeSessionId: UUID?, termCounts: [UUID: Int])
         case sessionTapped(LanguageSession)
         case addSessionButtonTapped
         case addSession(PresentationAction<CreateSessionFeature.Action>)
@@ -76,14 +79,16 @@ struct ProfileFeature {
                     do {
                         let sessions = try await persistenceClient.fetchSessions()
                         let activeId = userDefaultsClient.activeSessionId()
-                        await send(.fetchSessionsSuccess(sessions: sessions, activeSessionId: activeId))
+                        let termCounts = try await persistenceClient.fetchSessionTermCounts()
+                        await send(.fetchSessionsSuccess(sessions: sessions, activeSessionId: activeId, termCounts: termCounts))
                     } catch {
-                        await send(.fetchSessionsSuccess(sessions: [], activeSessionId: nil))
+                        await send(.fetchSessionsSuccess(sessions: [], activeSessionId: nil, termCounts: [:]))
                     }
                 }
 
-            case let .fetchSessionsSuccess(sessions, activeId):
+            case let .fetchSessionsSuccess(sessions, activeId, termCounts):
                 state.sessions = sessions
+                state.termCounts = termCounts
                 if let activeId, sessions.contains(where: { $0.id == activeId }) {
                     state.activeSessionId = activeId
                 } else {
@@ -135,18 +140,19 @@ struct ProfileFeature {
                     do {
                         try await persistenceClient.deleteSession(targetId)
                         let remaining = try await persistenceClient.fetchSessions()
+                        let counts = try await persistenceClient.fetchSessionTermCounts()
 
                         if remaining.isEmpty {
                             userDefaultsClient.setActiveSessionId(nil)
-                            await send(.fetchSessionsSuccess(sessions: [], activeSessionId: nil))
+                            await send(.fetchSessionsSuccess(sessions: [], activeSessionId: nil, termCounts: [:]))
                             await send(.delegate(.sessionDeleted(remainingSessions: [])))
                         } else if wasActive, let nextActive = remaining.first {
                             userDefaultsClient.setActiveSessionId(nextActive.id)
-                            await send(.fetchSessionsSuccess(sessions: remaining, activeSessionId: nextActive.id))
+                            await send(.fetchSessionsSuccess(sessions: remaining, activeSessionId: nextActive.id, termCounts: counts))
                             await send(.delegate(.activeSessionChanged(nextActive)))
                         } else {
                             let activeId = userDefaultsClient.activeSessionId()
-                            await send(.fetchSessionsSuccess(sessions: remaining, activeSessionId: activeId))
+                            await send(.fetchSessionsSuccess(sessions: remaining, activeSessionId: activeId, termCounts: counts))
                             await send(.delegate(.sessionDeleted(remainingSessions: remaining)))
                         }
                     } catch {

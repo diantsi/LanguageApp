@@ -352,6 +352,22 @@ actor GRDBDatabaseActor {
         }
     }
 
+    func fetchSessionTermCounts() throws -> [UUID: Int] {
+        try pool.read { db in
+            let sql = "SELECT sessionId, COUNT(*) as termCount FROM terms GROUP BY sessionId"
+            let rows = try Row.fetchAll(db, sql: sql)
+            var result: [UUID: Int] = [:]
+            for row in rows {
+                if let sessionStr: String = row["sessionId"],
+                   let uuid = UUID(uuidString: sessionStr),
+                   let count: Int = row["termCount"] {
+                    result[uuid] = count
+                }
+            }
+            return result
+        }
+    }
+
     func fetchLearningProgress(termId: UUID) throws -> LearningProgress? {
         try pool.read { db in
             let row = try LearningProgressRow.fetchOne(db, key: termId.uuidString)

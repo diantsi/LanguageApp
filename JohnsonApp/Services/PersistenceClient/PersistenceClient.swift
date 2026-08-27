@@ -26,6 +26,7 @@ struct PersistenceClient {
     var deleteTerm:          @Sendable (UUID) async throws -> Void
     var fetchDueTerms:       @Sendable (UUID, Date, Int) async throws -> [Term]
     var termExists:          @Sendable (UUID, String, String) async throws -> Bool
+    var fetchSessionTermCounts: @Sendable () async throws -> [UUID: Int]
 
     // MARK: - Learning Progress Operations
     var fetchLearningProgress:  @Sendable (UUID) async throws -> LearningProgress?
@@ -74,6 +75,9 @@ extension PersistenceClient: DependencyKey {
             termExists: { sessionId, termText, translation in
                 try await actor.termExists(sessionId: sessionId, termText: termText, translation: translation)
             },
+            fetchSessionTermCounts: {
+                try await actor.fetchSessionTermCounts()
+            },
             fetchLearningProgress: { id in
                 try await actor.fetchLearningProgress(termId: id)
             },
@@ -99,6 +103,7 @@ extension PersistenceClient: DependencyKey {
         deleteTerm:             { _ in },
         fetchDueTerms:          { _, _, _ in [] },
         termExists:             { _, _, _ in false },
+        fetchSessionTermCounts: { [:] },
         fetchLearningProgress:  { _ in nil },
         updateLearningProgress: { _, _ in }
     )
@@ -142,6 +147,7 @@ extension PersistenceClient: DependencyKey {
                     $0.translation.trimmingCharacters(in: .whitespaces).lowercased() == normalizedTranslation
                 }
             },
+            fetchSessionTermCounts: { [mockSession.id: mockTerms.count] },
             fetchLearningProgress: { _ in LearningProgress(dueDate: Date()) },
             updateLearningProgress: { _, _ in }
         )

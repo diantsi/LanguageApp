@@ -130,8 +130,9 @@ struct ProfileView: View {
                 }
             }
 
+            let count = store.termCounts[active.id] ?? 0
             VStack(spacing: 2) {
-                Text("100")
+                Text("\(count)")
                     .font(.system(size: 22, weight: .bold, design: .monospaced))
                     .foregroundStyle(.white)
                 Text("термів")
@@ -150,6 +151,7 @@ struct ProfileView: View {
 
     private func sessionRow(_ session: LanguageSession) -> some View {
         let isActive = (session.id == store.activeSessionId)
+        let count = store.termCounts[session.id] ?? 0
 
         return HStack(spacing: 12) {
             VStack(alignment: .leading, spacing: 4) {
@@ -173,6 +175,14 @@ struct ProfileView: View {
             }
 
             Spacer()
+
+            Text("\(count) термів")
+                .font(.system(size: 11, weight: .bold, design: .monospaced))
+                .foregroundStyle(AppTheme.accentBlue)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 4)
+                .background(AppTheme.accentBlue.opacity(0.1))
+                .clipShape(Capsule())
 
             Button(role: .destructive) {
                 store.send(.deleteSessionButtonTapped(session))
