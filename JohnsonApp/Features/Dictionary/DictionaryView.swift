@@ -12,17 +12,15 @@ struct DictionaryView: View {
 
     public var body: some View {
         NavigationStack {
-            VStack(alignment: .leading, spacing: 20) {
-                Text("Словник")
-                    .font(.title)
+            VStack(alignment: .leading, spacing: 16) {
                 searchBar()
+                
                 Picker("Статус", selection: $store.statusFilter.sending(\.statusFilterChanged)) {
                     ForEach(DictionaryFeature.StatusFilter.allCases) { filter in
                         Text(filter.title).tag(filter)
                     }
                 }
                 .pickerStyle(.segmented)
-                .background(Color(.systemBackground))
                 .onChange(of: store.statusFilter) {
                     isSearchFocused = false
                 }
@@ -32,7 +30,7 @@ struct DictionaryView: View {
                     HStack {
                         Spacer()
                         ProgressView("Завантаження словника...")
-                            .tint(.accentColor)
+                            .tint(AppTheme.sageGreen)
                         Spacer()
                     }
                     Spacer()
@@ -42,7 +40,7 @@ struct DictionaryView: View {
                     Spacer()
                 } else {
                     ScrollView {
-                        LazyVStack(alignment: .leading, spacing: 20) {
+                        LazyVStack(alignment: .leading, spacing: 12) {
                             ForEach(store.terms) { term in
                                 TermCardView(
                                     termText: term.termText,
@@ -75,20 +73,14 @@ struct DictionaryView: View {
                 }
             }
             .padding(.horizontal, 20)
+            .padding(.top, 16)
+            .background(AppTheme.backgroundColor)
+            .safeAreaInset(edge: .top) {
+                headerBanner
+            }
             .contentShape(Rectangle())
             .onTapGesture {
                 isSearchFocused = false
-            }
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button {
-                        isSearchFocused = false
-                        store.send(.addButtonTapped)
-                    } label: {
-                        Image(systemName: "plus")
-                            .font(.title3)
-                    }
-                }
             }
             .onAppear {
                 store.send(.onAppear)
@@ -103,10 +95,24 @@ struct DictionaryView: View {
         }
     }
 
+    private var headerBanner: some View {
+        HeaderBannerView(title: "словник", imageName: "hellocat") {
+            Button {
+                isSearchFocused = false
+                store.send(.addButtonTapped)
+            } label: {
+                Image(systemName: "plus.circle.fill")
+                    .font(.system(size: 26))
+                    .foregroundStyle(.white)
+                    .padding(.trailing, 8)
+            }
+        }
+    }
+
     private func searchBar() -> some View {
         HStack {
             Image(systemName: "magnifyingglass")
-                .foregroundStyle(.secondary)
+                .foregroundStyle(isSearchFocused ? AppTheme.sageGreen : .secondary)
             TextField("пошук термів", text: $store.searchQuery.sending(\.searchQueryChanged))
                 .focused($isSearchFocused)
 
@@ -121,12 +127,12 @@ struct DictionaryView: View {
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 12)
-        .frame(height: 50)
-        .background(Color(.secondarySystemGroupedBackground))
-        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .frame(height: 48)
+        .background(AppTheme.cardBackgroundColor)
+        .clipShape(RoundedRectangle(cornerRadius: 14))
         .overlay(
-            RoundedRectangle(cornerRadius: 12)
-                .stroke(isSearchFocused ? Color.accentColor : Color.gray.opacity(0.3), lineWidth: isSearchFocused ? 1.5 : 1)
+            RoundedRectangle(cornerRadius: 14)
+                .stroke(isSearchFocused ? AppTheme.sageGreen : Color.gray.opacity(0.2), lineWidth: isSearchFocused ? 1.5 : 1)
         )
     }
 
@@ -148,8 +154,8 @@ struct DictionaryView: View {
         case .new:
             return (
                 status.localizedName.uppercased(),
-                .blue,
-                Color.blue.opacity(0.12)
+                AppTheme.accentBlue,
+                AppTheme.accentBlue.opacity(0.12)
             )
         case .learning:
             return (
@@ -160,8 +166,8 @@ struct DictionaryView: View {
         case .mastered:
             return (
                 status.localizedName.uppercased(),
-                .green,
-                Color.green.opacity(0.12)
+                AppTheme.sageGreen,
+                AppTheme.sageGreen.opacity(0.15)
             )
         }
     }
@@ -170,10 +176,10 @@ struct DictionaryView: View {
         VStack(spacing: 16) {
             Image(systemName: "character.book.closed")
                 .font(.system(size: 60))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(AppTheme.sageGreen.opacity(0.7))
 
             Text("Додайте слова, щоб розпочати вивчення та тренування.")
-                .font(.title2)
+                .font(.title3.bold())
                 .foregroundStyle(.secondary)
                 .padding(.horizontal, 32)
 
@@ -181,8 +187,13 @@ struct DictionaryView: View {
                 store.send(.addButtonTapped)
             } label: {
                 Label("Додати слова", systemImage: "plus")
+                    .font(.headline)
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 24)
+                    .padding(.vertical, 12)
+                    .background(AppTheme.accentBlue)
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
             }
-            .padding(.horizontal, 32)
             .padding(.top, 8)
         }
         .padding()

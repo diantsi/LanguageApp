@@ -31,7 +31,7 @@ struct AddTermsView: View {
                 }
                 .padding()
             }
-            .background(Color(.systemGroupedBackground))
+            .background(AppTheme.backgroundColor)
             .navigationTitle("Додати слова")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -39,6 +39,7 @@ struct AddTermsView: View {
                     Button("Скасувати") {
                         store.send(.cancelButtonTapped)
                     }
+                    .foregroundStyle(AppTheme.sageGreen)
                 }
                 ToolbarItem(placement: .navigationBarTrailing) {
                     if store.isLoading {
@@ -47,7 +48,8 @@ struct AddTermsView: View {
                         Button("Зберегти") {
                             store.send(.saveButtonTapped)
                         }
-                        .fontWeight(.semibold)
+                        .fontWeight(.bold)
+                        .foregroundStyle(store.canSave ? AppTheme.accentBlue : Color.gray)
                         .disabled(!store.canSave)
                     }
                 }
@@ -72,8 +74,7 @@ struct AddTermsView: View {
             .foregroundStyle(.secondary)
             .padding(12)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(Color(.secondarySystemGroupedBackground))
-            .clipShape(RoundedRectangle(cornerRadius: 10))
+            .appCardStyle(cornerRadius: 10, borderColor: AppTheme.sageGreen.opacity(0.2), borderWidth: 1)
         }
     }
 
@@ -91,8 +92,12 @@ struct AddTermsView: View {
                     .frame(minHeight: 160)
                     .padding(12)
                     .scrollContentBackground(.hidden)
-                    .background(Color(.secondarySystemGroupedBackground))
+                    .background(AppTheme.cardBackgroundColor)
                     .clipShape(RoundedRectangle(cornerRadius: 12))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 12)
+                            .stroke(isEditorFocused ? AppTheme.sageGreen : AppTheme.sageGreen.opacity(0.25), lineWidth: isEditorFocused ? 1.5 : 1)
+                    )
                     .autocorrectionDisabled()
                     .textInputAutocapitalization(.never)
                     .focused($isEditorFocused)
@@ -128,7 +133,7 @@ struct AddTermsView: View {
                 Spacer()
             }
             .padding(.vertical, 14)
-            .background(store.inputText.isEmpty ? Color.accentColor.opacity(0.4) : Color.accentColor)
+            .background(store.inputText.isEmpty ? AppTheme.accentBlue.opacity(0.4) : AppTheme.accentBlue)
             .foregroundStyle(.white)
             .clipShape(RoundedRectangle(cornerRadius: 12))
         }
@@ -142,7 +147,7 @@ struct AddTermsView: View {
             statBadge(
                 count: store.parsedTerms.count,
                 label: "термінів",
-                color: .green
+                color: AppTheme.sageGreen
             )
             if !store.invalidLines.isEmpty {
                 statBadge(

@@ -23,9 +23,10 @@ struct LearningSessionView: View {
                 }
 
                 ProgressView(value: Double(store.currentIndex + 1), total: Double(store.exercises.count))
-                    .tint(.blue)
+                    .tint(AppTheme.sageGreen)
             }
             .padding(.horizontal)
+            .padding(.top, 12)
 
             ScrollView {
                 VStack(spacing: 20) {
@@ -50,7 +51,7 @@ struct LearningSessionView: View {
                             .foregroundColor(.white)
                             .frame(maxWidth: .infinity)
                             .padding()
-                            .background(store.isSubmitDisabled ? Color.gray : Color.blue)
+                            .background(store.isSubmitDisabled ? Color.gray.opacity(0.4) : AppTheme.accentBlue)
                             .cornerRadius(14)
                     }
                     .disabled(store.isSubmitDisabled)
@@ -66,7 +67,7 @@ struct LearningSessionView: View {
                         .foregroundColor(.white)
                         .frame(maxWidth: .infinity)
                         .padding()
-                        .background(Color.blue.gradient)
+                        .background(AppTheme.accentBlue)
                         .cornerRadius(14)
                     }
                 }
@@ -74,6 +75,7 @@ struct LearningSessionView: View {
             .padding(.horizontal)
             .padding(.bottom, 10)
         }
+        .background(AppTheme.backgroundColor)
     }
 
     @ViewBuilder
@@ -84,8 +86,8 @@ struct LearningSessionView: View {
                     .font(.caption.bold())
                     .padding(.horizontal, 10)
                     .padding(.vertical, 4)
-                    .background(Color.blue.opacity(0.12))
-                    .foregroundColor(.blue)
+                    .background(AppTheme.accentBlue.opacity(0.12))
+                    .foregroundColor(AppTheme.accentBlue)
                     .clipShape(Capsule())
 
                 Spacer()
@@ -153,10 +155,10 @@ struct LearningSessionView: View {
                         Text("Озвучити")
                             .font(.headline)
                     }
-                    .foregroundColor(.blue)
+                    .foregroundColor(AppTheme.accentBlue)
                     .padding()
                     .frame(maxWidth: .infinity)
-                    .background(Color.blue.opacity(0.1))
+                    .background(AppTheme.accentBlue.opacity(0.1))
                     .cornerRadius(12)
                 }
 
@@ -168,9 +170,8 @@ struct LearningSessionView: View {
                     .disabled(store.isAnswerSubmitted)
             }
         }
-        .padding()
-        .background(Color(uiColor: .secondarySystemGroupedBackground))
-        .cornerRadius(16)
+        .padding(16)
+        .appCardStyle(cornerRadius: 16, borderColor: AppTheme.sageGreen.opacity(0.3), borderWidth: 1.5)
     }
 
     private func optionButton(_ option: String, targetAnswer: String) -> some View {
@@ -184,18 +185,18 @@ struct LearningSessionView: View {
 
         if isSubmitted {
             if isTarget {
-                backgroundColor = Color.green.opacity(0.15)
-                borderColor = Color.green
-                textColor = .green
+                backgroundColor = AppTheme.sageGreen.opacity(0.15)
+                borderColor = AppTheme.sageGreen
+                textColor = AppTheme.sageGreen
             } else if isSelected && !isTarget {
                 backgroundColor = Color.red.opacity(0.15)
                 borderColor = Color.red
                 textColor = .red
             }
         } else if isSelected {
-            backgroundColor = Color.blue.opacity(0.15)
-            borderColor = Color.blue
-            textColor = .blue
+            backgroundColor = AppTheme.accentBlue.opacity(0.15)
+            borderColor = AppTheme.accentBlue
+            textColor = AppTheme.accentBlue
         }
 
         return Button {
@@ -208,12 +209,12 @@ struct LearningSessionView: View {
                 Spacer()
                 if isSubmitted {
                     if isTarget {
-                        Image(systemName: "checkmark.circle.fill").foregroundColor(.green)
+                        Image(systemName: "checkmark.circle.fill").foregroundColor(AppTheme.sageGreen)
                     } else if isSelected {
                         Image(systemName: "xmark.circle.fill").foregroundColor(.red)
                     }
                 } else if isSelected {
-                    Image(systemName: "checkmark.circle.fill").foregroundColor(.blue)
+                    Image(systemName: "checkmark.circle.fill").foregroundColor(AppTheme.accentBlue)
                 }
             }
             .padding()

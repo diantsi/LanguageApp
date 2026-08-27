@@ -49,16 +49,21 @@ struct CreateSessionView: View {
                             Spacer()
                             if store.isSubmitting {
                                 ProgressView()
+                                    .tint(.white)
                             } else {
                                 Text("Створити сесію")
-                                    .fontWeight(.semibold)
+                                    .fontWeight(.bold)
+                                    .foregroundStyle(store.canSubmit ? .white : .white.opacity(0.6))
                             }
                             Spacer()
                         }
+                        .padding(.vertical, 4)
                     }
                     .disabled(!store.canSubmit)
+                    .listRowBackground(store.canSubmit ? AppTheme.accentBlue : AppTheme.accentBlue.opacity(0.4))
                 }
             }
+            .tint(AppTheme.sageGreen)
             .navigationTitle("Нова сесія")
         }
     }

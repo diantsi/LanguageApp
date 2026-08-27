@@ -9,57 +9,44 @@ import SwiftUI
 struct ProfileView: View {
     @Bindable var store: StoreOf<ProfileFeature>
 
-    private static let dateFormatter: DateFormatter = {
-        let df = DateFormatter()
-        df.dateStyle = .medium
-        return df
-    }()
-    
-    private let greencolor : Color = Color(red: 0.4, green: 0.57, blue: 0.34)
-    private let bluecolor: Color = Color(red: 0.2, green: 0.38, blue: 0.77)
-
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 24) {
 
-                HStack(alignment: .bottom, spacing: 20) {
-                    VStack(
-                        alignment: .center,
-                        spacing: 10
-                    ) {
+                HStack(alignment: .bottom, spacing: 16) {
+                    VStack(alignment: .center, spacing: 8) {
                         Image("caticon")
                             .resizable()
-                            .frame(width: 90, height: 90)
+                            .scaledToFill()
+                            .frame(width: 80, height: 80)
                             .clipShape(Circle())
-                        HStack {
+                            .overlay(Circle().stroke(AppTheme.sageGreen, lineWidth: 2))
+                        
+                        HStack(spacing: 4) {
                             Text(store.username)
-                                .font(
-                                    .system(size: 20, weight: .regular)
-                                        .monospacedDigit()
-                                )
+                                .font(.system(size: 18, weight: .bold, design: .monospaced))
                             Image(systemName: "pencil")
+                                .font(.caption)
+                                .foregroundStyle(AppTheme.sageGreen)
                         }
                     }
+                    
                     Spacer()
-                    VStack(alignment: .center, spacing: 11) {
+
+                    VStack(alignment: .center, spacing: 15) {
                         HStack(spacing: 4) {
                             Text("🔥")
-                                .font(
-                                    .system(size: 60, weight: .regular)
-                                        .monospacedDigit()
-                                )
+                                .font(.system(size: 42))
                             Text("\(store.userStreak)")
-                                .font(
-                                    .system(size: 60, weight: .regular)
-                                        .monospacedDigit()
-                                )
+                                .font(.system(size: 42, weight: .bold, design: .monospaced))
+                                .foregroundStyle(AppTheme.sageGreen)
                         }
                         Text("днів підряд")
-                            .font(
-                                .system(size: 20, weight: .regular)
-                                    .monospacedDigit()
-                            )
+                            .font(.system(size: 14, weight: .medium, design: .monospaced))
+                            .foregroundStyle(.secondary)
                     }
+
+                    
                 }
                 .padding(.horizontal, 50)
 
@@ -67,12 +54,10 @@ struct ProfileView: View {
                     activeSession(active: active)
                 }
 
-                VStack(alignment: .leading, spacing: 12) {
+                VStack(alignment: .leading, spacing: 14) {
                     HStack {
                         Text("Ваші сесії")
-                            .font(.system(size: 20, weight: .bold)
-                                .monospacedDigit()
-                                  )
+                            .font(.system(size: 20, weight: .bold, design: .monospaced))
 
                         Spacer()
 
@@ -83,11 +68,9 @@ struct ProfileView: View {
                                 "Додати сесію",
                                 systemImage: "plus.circle.fill"
                             )
-                            .font(.system(size: 15, weight: .bold)
-                                .monospacedDigit())
-                            .foregroundStyle(bluecolor)
+                            .font(.system(size: 14, weight: .bold, design: .monospaced))
+                            .foregroundStyle(AppTheme.accentBlue)
                         }
-                        
                     }
 
                     if store.sessions.isEmpty {
@@ -109,38 +92,22 @@ struct ProfileView: View {
             .padding(.top, 20)
             .padding(.bottom, 40)
         }
-        .background(Color(.systemGroupedBackground))
+        .background(AppTheme.backgroundColor)
         .safeAreaInset(edge: .top) {
-            headerBanner
+            HeaderBannerView(title: "привіт, \(store.username)", imageName: "hellocat")
         }
         .onAppear {
             store.send(.onAppear)
         }
-        .sheet(item: $store.scope(state: \.addSession, action: \.addSession)) {
-            store in
+        .sheet(item: $store.scope(state: \.addSession, action: \.addSession)) { store in
             CreateSessionView(store: store)
         }
         .alert($store.scope(state: \.alert, action: \.alert))
     }
 
-    private var headerBanner: some View {
-        HStack {
-            Text("привіт, \(store.username)")
-                .foregroundColor(.white)
-                .font(.system(size: 22, weight: .bold, design: .monospaced))
-            Spacer()
-            Image("cat2")
-                .resizable()
-                .frame(width: 125, height: 112)
-        }.padding(.horizontal, 20)
-            .background(
-                greencolor
-                    .ignoresSafeArea(edges: .top)
-            )
-    }
-    
+
     private func activeSession(active: LanguageSession) -> some View {
-        HStack {
+        HStack(spacing: 16) {
             VStack(alignment: .leading, spacing: 8) {
                 HStack {
                     Label(
@@ -148,53 +115,38 @@ struct ProfileView: View {
                         systemImage: "checkmark.seal.fill"
                     )
                     .font(.system(size: 11, weight: .bold))
-                    .fontWeight(.bold)
-                    .foregroundStyle(greencolor)
+                    .foregroundStyle(AppTheme.sageGreen)
                     .textCase(.uppercase)
                     Spacer()
                 }
-                
+
                 VStack(alignment: .leading, spacing: 4) {
                     Text(active.name)
-                        .font(.system(size: 20, weight: .bold))
-                    
-                    Text(
-                        "\(active.termLanguage.displayName) → \(active.translationLanguage.displayName)"
-                    )
-                    .font(.system(size: 12, weight: .light))
-                    .foregroundStyle(.gray)
+                        .font(.system(size: 18, weight: .bold))
+
+                    Text("\(active.termLanguage.displayName) → \(active.translationLanguage.displayName)")
+                        .font(.system(size: 13, weight: .regular))
+                        .foregroundStyle(.secondary)
                 }
-                
             }
-            VStack{
+
+            VStack(spacing: 2) {
                 Text("100")
-                    .font(.system(size: 25, weight: .bold))
+                    .font(.system(size: 22, weight: .bold, design: .monospaced))
                     .foregroundStyle(.white)
                 Text("термів")
-                    .font(.system(size: 15, weight: .bold))
-                    .foregroundStyle(.white)
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(.white.opacity(0.9))
             }
-            .padding(10)
-            .background(bluecolor)
-            .clipShape(
-                RoundedRectangle(cornerRadius: 16)
-            )
+            .padding(.horizontal, 14)
+            .padding(.vertical, 10)
+            .background(AppTheme.accentBlue)
+            .clipShape(RoundedRectangle(cornerRadius: 14))
         }
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color(.secondarySystemGroupedBackground))
-        .clipShape(RoundedRectangle(cornerRadius: 16))
-        .overlay(
-            RoundedRectangle(cornerRadius: 16)
-                .strokeBorder(
-                    greencolor.opacity(0.3),
-                    lineWidth: 1.5
-                )
-        )
-        
+        .appCardStyle(cornerRadius: 16, borderColor: AppTheme.sageGreen.opacity(0.4), borderWidth: 1.5)
     }
-
-    
 
     private func sessionRow(_ session: LanguageSession) -> some View {
         let isActive = (session.id == store.activeSessionId)
@@ -204,13 +156,20 @@ struct ProfileView: View {
                 HStack(spacing: 6) {
                     Text(session.name)
                         .font(.system(size: 15, weight: .bold))
+                    if isActive {
+                        Text("АКТИВНА")
+                            .font(.system(size: 9, weight: .bold))
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .background(AppTheme.sageGreen.opacity(0.15))
+                            .foregroundStyle(AppTheme.sageGreen)
+                            .clipShape(Capsule())
+                    }
                 }
 
-                Text(
-                    "\(session.termLanguage.displayName) → \(session.translationLanguage.displayName)"
-                )
-                .font(.system(size: 10, weight: .regular))
-                .foregroundStyle(.gray)
+                Text("\(session.termLanguage.displayName) → \(session.translationLanguage.displayName)")
+                    .font(.system(size: 12, weight: .regular))
+                    .foregroundStyle(.secondary)
             }
 
             Spacer()
@@ -226,14 +185,10 @@ struct ProfileView: View {
             .buttonStyle(.plain)
         }
         .padding(14)
-        .background(Color(.secondarySystemGroupedBackground))
-        .clipShape(RoundedRectangle(cornerRadius: 12))
-        .overlay(
-            RoundedRectangle(cornerRadius: 12)
-                .strokeBorder(
-                    isActive ? greencolor.opacity(0.4) : Color.clear,
-                    lineWidth: 1
-                )
+        .appCardStyle(
+            cornerRadius: 12,
+            borderColor: isActive ? AppTheme.sageGreen.opacity(0.5) : Color.gray.opacity(0.15),
+            borderWidth: isActive ? 1.5 : 1
         )
         .contentShape(Rectangle())
         .onTapGesture {

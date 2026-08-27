@@ -48,7 +48,7 @@ struct TermCardView<Accessory: View>: View {
                     if let onDelete = onDelete {
                         Button(action: onDelete) {
                             Image(systemName: "xmark.circle.fill")
-                                .foregroundStyle(.secondary)
+                                .foregroundStyle(.red)
                                 .imageScale(.medium)
                         }
                     }
@@ -70,12 +70,8 @@ struct TermCardView<Accessory: View>: View {
                 }
             }
         }
-        .padding()
-        .background(
-            RoundedRectangle(cornerRadius: 16)
-                .fill(Color(.secondarySystemGroupedBackground))
-                .shadow(color: Color.black.opacity(0.04), radius: 5, x: 0, y: 2)
-        )
+        .padding(16)
+        .appCardStyle(cornerRadius: 16, borderColor: AppTheme.sageGreen.opacity(0.25), borderWidth: 1)
     }
 }
 

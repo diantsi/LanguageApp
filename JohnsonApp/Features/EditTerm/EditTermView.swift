@@ -51,10 +51,12 @@ struct EditTermView: View {
                         Button("Скасувати") {
                             store.send(.closeButtonTapped)
                         }
+                        .foregroundStyle(AppTheme.sageGreen)
                     } else {
                         Button("Закрити") {
                             store.send(.closeButtonTapped)
                         }
+                        .foregroundStyle(AppTheme.sageGreen)
                     }
                 }
                 ToolbarItem(placement: .navigationBarTrailing) {
@@ -65,16 +67,20 @@ struct EditTermView: View {
                             Button("Зберегти") {
                                 store.send(.saveButtonTapped)
                             }
-                            .fontWeight(.semibold)
+                            .fontWeight(.bold)
+                            .foregroundStyle(store.canSave ? AppTheme.accentBlue : Color.gray)
                             .disabled(!store.canSave)
                         }
                     } else {
                         Button("Редагувати") {
                             store.send(.editButtonTapped)
                         }
+                        .fontWeight(.bold)
+                        .foregroundStyle(AppTheme.accentBlue)
                     }
                 }
             }
+            .tint(AppTheme.sageGreen)
             .alert($store.scope(state: \.alert, action: \.alert))
         }
     }

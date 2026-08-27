@@ -19,6 +19,10 @@ struct FlashcardFeature {
             case .translation: return "Переклад"
             }
         }
+        
+        mutating func toggle() {
+            self = (self == .term) ? .translation : .term
+        }
     }
 
     enum VisibleSide: Equatable {
@@ -137,7 +141,7 @@ struct FlashcardFeature {
         case nextCard
         case previousCard
         case restartSession
-        case firstSideChanged(FirstSide)
+        case firstSideChanged
         case voiceButtonTapped
         case goToDictionaryTapped
         case delegate(Delegate)
@@ -202,8 +206,8 @@ struct FlashcardFeature {
                 state.isFlipped = false
                 return .run { [speechClient] _ in await speechClient.stop() }
 
-            case .firstSideChanged(let side):
-                state.firstSide = side
+            case .firstSideChanged:
+                state.firstSide.toggle()
                 state.isFlipped = false
                 return .none
 

@@ -16,7 +16,7 @@ struct LearningSetupView: View {
     var body: some View {
         NavigationStack {
             ZStack {
-                Color(uiColor: .systemGroupedBackground)
+                AppTheme.backgroundColor
                     .ignoresSafeArea()
 
                 if let sessionStore = store.scope(state: \.session, action: \.session) {
@@ -24,10 +24,14 @@ struct LearningSetupView: View {
                 } else if let summaryStore = store.scope(state: \.summary, action: \.summary) {
                     LearningSummaryView(store: summaryStore)
                 } else {
-                    setupView
+                    ScrollView {
+                        setupView
+                    }
+                    .safeAreaInset(edge: .top) {
+                        HeaderBannerView(title: "пора вчитись", imageName: "studycat")
+                    }
                 }
             }
-            .navigationTitle("Навчання")
             .onAppear {
                 store.send(.onAppear)
             }
@@ -39,9 +43,9 @@ struct LearningSetupView: View {
         VStack(spacing: 24) {
             VStack(spacing: 8) {
                 Image(systemName: "graduationcap.fill")
-                    .font(.system(size: 56))
-                    .foregroundStyle(.blue.gradient)
-                    .padding(.bottom, 8)
+                    .font(.system(size: 50))
+                    .foregroundStyle(AppTheme.accentBlue)
+                    .padding(.bottom, 4)
 
                 Text("Інтервальне повторення")
                     .font(.title2.bold())
@@ -52,15 +56,16 @@ struct LearningSetupView: View {
                     .multilineTextAlignment(.center)
                     .padding(.horizontal)
             }
-            .padding(.top, 20)
+            .padding(.top, 16)
 
             if store.isLoading {
                 ProgressView("Завантаження карток...")
+                    .tint(AppTheme.sageGreen)
                     .padding(.top, 40)
             } else if store.termsToLearn.isEmpty {
                 noTermsToLearnView
             } else {
-                VStack(spacing: 20) {
+                VStack(spacing: 16) {
                     HStack {
                         VStack(alignment: .leading, spacing: 4) {
                             Text("Доступно карток на сьогодні")
@@ -68,14 +73,13 @@ struct LearningSetupView: View {
                                 .foregroundColor(.secondary)
 
                             Text("\(store.termsLimit)")
-                                .font(.system(size: 36, weight: .bold, design: .rounded))
-                                .foregroundColor(.primary)
+                                .font(.system(size: 36, weight: .bold, design: .monospaced))
+                                .foregroundColor(AppTheme.sageGreen)
                         }
                         Spacer()
                     }
-                    .padding()
-                    .background(Color(uiColor: .secondarySystemGroupedBackground))
-                    .cornerRadius(16)
+                    .padding(16)
+                    .appCardStyle(cornerRadius: 16, borderColor: AppTheme.sageGreen.opacity(0.3), borderWidth: 1)
 
                     VStack(alignment: .leading, spacing: 12) {
                         Text("Розмір сесії")
@@ -88,7 +92,7 @@ struct LearningSetupView: View {
                             Spacer()
                             Text("\(store.userLimit)")
                                 .font(.title3.bold())
-                                .foregroundColor(.blue)
+                                .foregroundColor(AppTheme.accentBlue)
                         }
 
                         Stepper(
@@ -100,9 +104,8 @@ struct LearningSetupView: View {
                                 .foregroundColor(.secondary)
                         }
                     }
-                    .padding()
-                    .background(Color(uiColor: .secondarySystemGroupedBackground))
-                    .cornerRadius(16)
+                    .padding(16)
+                    .appCardStyle(cornerRadius: 16, borderColor: AppTheme.sageGreen.opacity(0.3), borderWidth: 1)
 
                     Button {
                         store.send(.startLearningTapped)
@@ -115,12 +118,12 @@ struct LearningSetupView: View {
                         .foregroundColor(.white)
                         .frame(maxWidth: .infinity)
                         .padding()
-                        .background(Color.blue.gradient)
+                        .background(AppTheme.accentBlue)
                         .cornerRadius(14)
                     }
                     .padding(.top, 8)
                 }
-                .padding(.horizontal)
+                .padding(.horizontal, 20)
             }
 
             Spacer()
@@ -132,7 +135,7 @@ struct LearningSetupView: View {
         VStack(spacing: 16) {
             Image(systemName: "checkmark.circle.fill")
                 .font(.system(size: 44))
-                .foregroundColor(.green)
+                .foregroundColor(AppTheme.sageGreen)
 
             Text("Все повторено!")
                 .font(.headline)
@@ -143,10 +146,9 @@ struct LearningSetupView: View {
                 .multilineTextAlignment(.center)
                 .padding(.horizontal)
         }
-        .padding()
-        .background(Color(uiColor: .secondarySystemGroupedBackground))
-        .cornerRadius(16)
-        .padding(.horizontal)
+        .padding(20)
+        .appCardStyle(cornerRadius: 16, borderColor: AppTheme.sageGreen.opacity(0.3), borderWidth: 1)
+        .padding(.horizontal, 20)
     }
 }
 
