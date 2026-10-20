@@ -1,7 +1,3 @@
-<p align="center">
-  <img src="JohnsonApp/Assets.xcassets/AppIcon.appiconset/appicon.png" width="128" alt="JohnsonApp icon">
-</p>
-
 <h1 align="center">JohnsonApp</h1>
 
 <p align="center">
